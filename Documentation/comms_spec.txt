@@ -1,0 +1,78 @@
+PROTOCOL:
+
+command:
+<start> <command group byte> <command byte> <parameter byte 1-8> <end byte>
+response:
+<start> <status> <response bytes 1-8> <end>
+
+Arduino is slave, speaks only when spoken to
+Heartbeat should be sent every 0.5 seconds, else arduino stops and sends 0x32
+
+
+COMMANDS:
+
+According to RFC1662:
+
+0x7E: start
+0x7E: end
+0x7D: escape byte
+
+
+---
+0x01: status commnad group
+heartbeat  # 0x01
+handshake(byte shake)  # 0x02 Response should be inverted shake byte
+ask status  # 0x03
+---
+
+0x02: set parameters
+set motor threshold(int threshold)  # 0x01
+calibrate gyro()  # 0x02
+
+
+
+---
+0x10: set speeds or rates
+
+setWheelSpeeds(int8 left, int8 right)  # 0x01
+PWM [-128, 127]
+
+setCarSpeed(int16 speed)  # 0x02
+in cm/sec
+
+setTurnRate(int16 rate)  # 0x03
+deg/sec
+---
+
+---
+0x11: Use sensor feedback to move precisely
+
+driveDistance(int dist)  # 0x01
+cm
+
+turnCar(int deg)  # 0x02
+
+turnCarAbsolute(int heading)  # 0x03
+deg
+---
+
+---
+0x20: Get direct sensor data
+
+getCompass()  # 0x01
+getAccelerometer()  # 0x02
+getGyro()  # 0x03
+---
+
+RESPONSE STATUS:
+
+0x10: OK
+
+0x20: Error
+0x21: Value out of range
+0x22: Function not available
+0x23: Malformed request
+
+0x30: State estimates invalid
+0x31: Sensors calibrating
+0x32: No heartbeat
