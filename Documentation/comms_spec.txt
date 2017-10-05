@@ -62,6 +62,7 @@ deg
 getCompass()  # 0x01
 getAccelerometer()  # 0x02
 getGyro()  # 0x03
+getCamera(int id)  # 0x04
 ---
 
 RESPONSE STATUS:

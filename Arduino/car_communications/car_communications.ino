@@ -238,16 +238,16 @@ long lastCommandMillis = 0;
 int timeout = 1000;
 void setup()
 {
-  Serial3.begin(115200);          // Rpi port
+  Serial1.begin(115200);          // Rpi port
   Serial.begin(115200);           // Arduino port
   car.setSpeed(0,0);
 }
 
 void loop()
 {
-    while (Serial3.available()> 0){
-      byte data = Serial3.read();
-      
+    while (Serial1.available()> 0){
+      byte data = Serial1.read();
+
       if(data != 0) {
         Serial.print("got ");
         Serial.println(data);
@@ -283,15 +283,20 @@ void loop()
         if(comms.commandBuffer[1] == WHEEL_SPD) {
           r_wheel = (int8_t) comms.commandBuffer[2];
           l_wheel = (int8_t) comms.commandBuffer[3];
+          comms.sendOK();
 
         } else if(comms.commandBuffer[1] == CAR_SPD) {
           speed = (int) comms.commandBuffer[2];
           r_wheel = speed + turnRate;
           l_wheel = speed - turnRate;
+          comms.sendOK();
+
         } else if(comms.commandBuffer[1] == TURN_SPD) {
           turnRate = (int) comms.commandBuffer[2];
           r_wheel = speed + turnRate;
           l_wheel = speed - turnRate;
+          comms.sendOK();
+
         } else {
           comms.sendReqMalformed();
         }

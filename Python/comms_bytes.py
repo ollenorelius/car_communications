@@ -18,21 +18,22 @@ DO_CALIB_GYRO = 0x02
 
 
 CMD_SPEED = 0x10  # Simple speed commands
-WHEEL_SPD = 0x01
-CAR_SPD = 0x02
-TURN_SPD = 0x03
+WHEEL_SPD = 0x01  # int8 right, int8 left
+CAR_SPD = 0x02  # int16 speed
+TURN_SPD = 0x03 # int16 deg/s
 
 
 CMD_SPEED_CL = 0x11  # Closed loop control
-DIST_CL = 0x01
-TURN_CL = 0x02
-TURN_ABS_CL = 0x03
+DIST_CL = 0x01  # int16 cm
+TURN_CL = 0x02  # int16 deg
+TURN_ABS_CL = 0x03  # int16 heading
 
 
 REQ_SENS = 0x20  # Data requests
 REQ_COMPASS = 0x01
 REQ_ACC = 0x02
 REQ_GYRO = 0x03
+REQ_PIC = 0x04  # int8 cameraID
 
 
 # Responses

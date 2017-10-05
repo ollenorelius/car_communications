@@ -12,9 +12,8 @@ class CarConnection:
     connection = 0
     connection_lock = threading.Lock()
 
-    def __init__(self):
-        self.connection = serial.Serial('/dev/ttyACM0', 115200)
-        time.sleep(1)
+    def __init__(self, serial_port='/dev/ttyAMA0', baudrate=115200):
+        self.connection = serial.Serial(serial_port, baudrate)
         # Initialize  serial to Arduino
         threading.Thread(target=self.heartbeat_thread,
                          args=(),
@@ -31,6 +30,7 @@ class CarConnection:
             self.connection.write([group])
             self.connection.write([command])
             if data != []:
+                print(data)
                 self.connection.write(data)
             self.connection.write([cb.END])
 
