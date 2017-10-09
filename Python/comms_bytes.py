@@ -20,7 +20,7 @@ DO_CALIB_GYRO = 0x02
 CMD_SPEED = 0x10  # Simple speed commands
 WHEEL_SPD = 0x01  # int8 right, int8 left
 CAR_SPD = 0x02  # int16 speed
-TURN_SPD = 0x03 # int16 deg/s
+TURN_SPD = 0x03  # int16 deg/s
 
 
 CMD_SPEED_CL = 0x11  # Closed loop control

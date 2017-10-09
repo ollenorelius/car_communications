@@ -1,13 +1,13 @@
 #!/usr/bin/python3
-
+"""Server application running in the background on the Raspberry Pi."""
 import socket
 import io
 import picamera
-import sys
 import struct
 import time
 import threading
-from car_connection import CarConnection
+from car_serial import CarSerial
+from protocol_reader import ProtocolReader
 import comms_bytes as cb
 
 
@@ -23,7 +23,7 @@ camera.shutter_speed = 10000
 camera.framerate = 40
 camera.rotation = 180
 
-car = CarConnection()
+car = CarSerial()
 
 timing = False
 image_lock = threading.Lock()
@@ -63,47 +63,110 @@ def network_thread(inbound_socket):
     client_connection = inbound_socket.makefile('rwb')
     # buf = bytearray([0])
     global image
-
+    pr = ProtocolReader()
+    ch = CommandHandler(car)
     while True:
-        t = time.time()
-        command = client_connection.read(1)
-        fwd = int(100)
-        bck = int(130)
-        rgt = int(130)
-        lft = int(120)
-        if command != b'':
-            t = time_op(t, 'recv command')
-            if command == b'p':
-                t = time.time()
+        while not pr.messageInBuffer:
+            inputByte = client_connection.read(1)
+            if inputByte == b'':
+                return 0
+            pr.readByte(inputByte)
+            print(inputByte)
+            print(pr.messageInBuffer)
+        print("Got full message!")
+        ch.readBuffer(pr.buf, client_connection)
+        pr.messageInBuffer = False
+
+
+class CommandHandler:
+    """Parses commands from the buffer in ProtocolReader."""
+
+    car = []
+
+    def __init__(self, car):
+        """Constructor. Pass the car object to be controlled."""
+        self.car = car
+
+    def checksum(self, buf):
+        """Create a simple checksum by XORing all the bytes in the message."""
+        chksum = 0
+        for byte in buf:
+            chksum ^= int.from_bytes(byte, 'big')
+        return chksum
+
+    def sendOK(self, buf, conn, data=[]):
+        """
+        Send an OK response.
+
+        buf:
+            buffer containing message data.
+        conn:
+            connection to send response over.
+        data:
+            byte array to append to message.
+        """
+        print("Sending OK: " + str(self.checksum(buf)) + " data: " + str(data))
+        conn.write(bytes(cb.START))
+        conn.write(bytes(cb.R_OK))
+        conn.write(bytes(self.checksum(buf)))
+        for datum in data:
+            conn.write(bytes(datum))
+        conn.write(bytes(cb.END))
+        conn.flush()
+        return 1
+
+    def readBuffer(self, buf, conn):
+        group = int.from_bytes(buf[0], 'big')
+        command = int.from_bytes(buf[1], 'big')
+        data = buf[2:]
+        print("got: " + str(buf))
+        # Use these to override functionality if desired.
+        if group == cb.CMD_STATUS:
+            if command == cb.HEARTBEAT:
+                pass
+            elif command == cb.HANDSHAKE:
+                pass
+            elif command == cb.ASK_STATUS:
+                pass
+
+        elif group == cb.CMD_SPEED:
+            if command == cb.WHEEL_SPD:
+                pass
+            elif command == cb.CAR_SPD:
+                pass
+            elif command == cb.TURN_SPD:
+                pass
+
+        elif group == cb.CMD_SPEED_CL:
+            if command == cb.DIST_CL:
+                pass
+            elif command == cb.TURN_CL:
+                pass
+            elif command == cb.TURN_ABS_CL:
+                pass
+
+        elif group == cb.REQ_SENS:
+            if command == cb.REQ_COMPASS:
+                pass
+            elif command == cb.REQ_ACC:
+                pass
+            elif command == cb.REQ_GYRO:
+                pass
+            elif command == cb.REQ_PIC:
+                print('Got picture request!')
+                global image
+                self.sendOK(buf, conn, [struct.pack('<L', len(image))])
                 with image_lock:
-                    t = time_op(t, 'capture')
-                    client_connection.write(struct.pack('<L', len(image)))
-                    t = time_op(t, 'send header')
-                    # Rewind the stream and send the image data over the wire
-                    client_connection.write(image)
-                client_connection.flush()
-                t = time_op(t, 'send data')
-            elif command == b'w':
-                car.send_message(cb.CMD_SPEED, command=cb.CAR_SPD, data=[fwd])
-            elif command == b'W':
-                car.send_message(cb.CMD_SPEED, command=cb.CAR_SPD, data=[0])
-            elif command == b's':
-                car.send_message(cb.CMD_SPEED, command=cb.CAR_SPD, data=[bck])
-            elif command == b'S':
-                car.send_message(cb.CMD_SPEED, command=cb.CAR_SPD, data=[0])
-            elif command == b'a':
-                car.send_message(cb.CMD_SPEED, command=cb.TURN_SPD, data=[lft])
-            elif command == b'A':
-                car.send_message(cb.CMD_SPEED, command=cb.TURN_SPD, data=[0])
-            elif command == b'd':
-                car.send_message(cb.CMD_SPEED, command=cb.TURN_SPD, data=[rgt])
-            elif command == b'D':
-                car.send_message(cb.CMD_SPEED, command=cb.TURN_SPD, data=[0])
-        else:
-            raise Exception('Stream broken!')
+                    conn.write(image)
+                conn.flush()
+                return 1
+
+        car.send_message(group=group, command=command, data=data)
+        self.sendOK(buf, conn)
+
 
 threading.Thread(target=camera_thread, daemon=True).start()
 while True:
     connection, addr = inbound_socket.accept()
     threading.Thread(target=network_thread, args=[connection]).start()
-print(connection)
+    print(connection)
