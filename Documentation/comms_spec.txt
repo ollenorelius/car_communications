@@ -4,6 +4,8 @@ command:
 <start> <command group byte> <command byte> <parameter byte 1-8> <end byte>
 response:
 <start> <status> <response bytes 1-8> <end>
+Response byte 1 is XOR of all received bytes excluding start, stop and escape.
+
 
 Arduino is slave, speaks only when spoken to
 Heartbeat should be sent every 0.5 seconds, else arduino stops and sends 0x32
