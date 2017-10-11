@@ -60,15 +60,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def camera_thread(self):
         while True:
+            time.sleep(0.1)
             temp_image = self.car.get_picture(0)
-            self.picSize = (self.cameraView.size().width(),
-                            self.cameraView.size().height())
-            temp_image = temp_image.resize(self.picSize)
-            with self.image_lock:
-                self.bbox_time = time.time()
-                image = temp_image
-                self.cameraView.setPixmap(
-                            QtGui.QPixmap.fromImage(ImageQt.ImageQt(image)))
+            if temp_image != None:
+                self.picSize = (self.cameraView.size().width(),
+                                self.cameraView.size().height())
+                temp_image = temp_image.resize(self.picSize)
+                with self.image_lock:
+                    self.bbox_time = time.time()
+                    image = temp_image
+                    self.cameraView.setPixmap(
+                                QtGui.QPixmap.fromImage(ImageQt.ImageQt(image)))
 
 
 if __name__ == "__main__":

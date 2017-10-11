@@ -4,14 +4,14 @@ import comms_bytes as cb
 class ProtocolReader:
     """Buffer for messages arriving from network socket."""
 
-    buf = []
+    buf = b''
     activeMessage = False
     nextCharEscaped = False
     messageInBuffer = False
 
     def emptyBuffer(self):
         """Small wrapper to make code clearer."""
-        self.buf = []
+        self.buf = b''
         self.nextCharEscaped = False
         self.messageInBuffer = False
 
@@ -21,7 +21,8 @@ class ProtocolReader:
 
         inputByte is a single byte char.
         """
-        print(str(self.activeMessage) + str(inputByte))
+        #if inputByte not in [b'', b'\x00']:
+        #    print(str(self.activeMessage) + str(inputByte))
         if int.from_bytes(inputByte, 'big') == cb.START and \
                 self.activeMessage is False:
             self.emptyBuffer()
@@ -38,7 +39,8 @@ class ProtocolReader:
             return 1
 
         if self.nextCharEscaped:
-            inputByte = bytes(int.from_bytes(inputByte, 'big') ^ cb.ESC_XOR)
+            inputByte = bytes({int.from_bytes(inputByte, 'big') ^ cb.ESC_XOR})
             self.nextCharEscaped = False
+
         if self.activeMessage:
-            self.buf.append(inputByte)
+            self.buf += inputByte

@@ -77,46 +77,46 @@ class CommsHandler {
     return chksum;
   }
   public: bool sendOK() {
-    Serial3.write(START);
-    Serial3.write(R_OK);
-    Serial3.write(getCheckSum());
-    Serial3.write(END);
+    Serial1.write(START);
+    Serial1.write(R_OK);
+    Serial1.write(getCheckSum());
+    Serial1.write(END);
   }
   public: bool sendHeartBeat() {
-    Serial3.write(START);
-    Serial3.write(HEARTBEAT);
-    Serial3.write(getCheckSum());
-    Serial3.write(END);
+    Serial1.write(START);
+    Serial1.write(HEARTBEAT);
+    Serial1.write(getCheckSum());
+    Serial1.write(END);
   }
   public: bool sendHandShake(char handshake) {
-    Serial3.write(START);
-    Serial3.write(!handshake);
-    Serial3.write(getCheckSum());
-    Serial3.write(END);
+    Serial1.write(START);
+    Serial1.write(!handshake);
+    Serial1.write(getCheckSum());
+    Serial1.write(END);
   }
   public: bool sendError() {
-    Serial3.write(START);
-    Serial3.write(R_ERR);
-    Serial3.write(getCheckSum());
-    Serial3.write(END);
+    Serial1.write(START);
+    Serial1.write(R_ERR);
+    Serial1.write(getCheckSum());
+    Serial1.write(END);
   }
   public: bool sendOutOfRange() {
-    Serial3.write(START);
-    Serial3.write(R_VAL_OOR);
-    Serial3.write(getCheckSum());
-    Serial3.write(END);
+    Serial1.write(START);
+    Serial1.write(R_VAL_OOR);
+    Serial1.write(getCheckSum());
+    Serial1.write(END);
   }
   public: bool sendFunctionNA() {
-    Serial3.write(START);
-    Serial3.write(R_FUNC_NA);
-    Serial3.write(getCheckSum());
-    Serial3.write(END);
+    Serial1.write(START);
+    Serial1.write(R_FUNC_NA);
+    Serial1.write(getCheckSum());
+    Serial1.write(END);
   }
   public: bool sendReqMalformed() {
-    Serial3.write(START);
-    Serial3.write(R_MAL_REQ);
-    Serial3.write(getCheckSum());
-    Serial3.write(END);
+    Serial1.write(START);
+    Serial1.write(R_MAL_REQ);
+    Serial1.write(getCheckSum());
+    Serial1.write(END);
   }
 };
 

@@ -11,7 +11,7 @@ class CarSerial:
     """Connection handler for Infotiv Autonomous car platform."""
 
     connection = 0
-    connection_lock = threading.Lock()
+    connection_lock = threading.RLock()
     pr = ProtocolReader()
 
     def __init__(self, serial_port='/dev/ttyAMA0', baudrate=115200):
@@ -57,12 +57,12 @@ class CarSerial:
             self.connection.write([cb.START])
             self.connection.write([group])
             self.connection.write([command])
+            #print("in send_message, command = %s:" % str(command))
             if data != []:
-                print(data)
-                self.connection.write(data)
+                #print("in send_message, data = %s:" % str(data))
+                self.connection.write([int.from_bytes(d, 'big') for d in data])
             self.connection.write([cb.END])
             reply = self.recv_message()
-            print(reply)
             return reply
 
     def recv_message(self):

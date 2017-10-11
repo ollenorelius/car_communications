@@ -38,6 +38,7 @@ REQ_PIC = 0x04  # int8 cameraID
 
 # Responses
 R_OK = 0x10
+R_OK_IMAGE_FOLLOWS = 0x11
 
 R_ERR = 0x20  # general error
 R_VAL_OOR = 0x21  # Out of range
