@@ -5,7 +5,7 @@ import comms_bytes as cb
 import threading
 import time
 from protocol_reader import ProtocolReader
-
+import struct
 
 class CarSerial:
     """Connection handler for Infotiv Autonomous car platform."""
@@ -55,6 +55,7 @@ class CarSerial:
         """
         with self.connection_lock:
             self.connection.write([cb.START])
+            self.connection.write(struct.pack('>L', 2+len(data)))
             self.connection.write([group])
             self.connection.write([command])
             # print("in send_message, command = %s:" % str(command))
@@ -69,8 +70,8 @@ class CarSerial:
         """Read an incoming message from Arduino."""
         timedout = False
         while not self.pr.messageInBuffer:
-            ser_byte = self.connection.read()
-            self.pr.readByte(ser_byte)
+            ser_byte = self.connection.read(self.pr.next_symbol_length)
+            self.pr.readBytes(ser_byte)
             if ser_byte == b'':
                 timedout = True
         if not timedout:

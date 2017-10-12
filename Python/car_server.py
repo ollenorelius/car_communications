@@ -36,34 +36,33 @@ def time_op(start, name):
     return time.time()
 
 
-
-
 def network_thread(inbound_socket):
     """Client handler thread."""
     client_connection = inbound_socket.makefile('rwb')
+    connection_up = True
+    pr = ProtocolReader()
 
     def inbound():
-        pr = ProtocolReader()
         while True:
             while not pr.messageInBuffer:
-                inputByte = client_connection.read(1)
-                if inputByte == b'':
+                print(pr.next_symbol_length)
+                inputBytes = client_connection.read(pr.next_symbol_length)
+                if inputBytes == b'':
+                    connection_up = False
                     return 0
-                pr.readByte(inputByte)
+                pr.readBytes(inputBytes)
             print("Got message: %s!" % pr.buf[0:2])
-            ch.in_queue.put(pr.buf[:])
+            ch.in_queue.put(pr.unescape_buffer(pr.buf[:]))
             pr.messageInBuffer = False
 
     def outbound():
-        while True:
+        while connection_up:
             message = ch.out_queue.get()
-            client_connection.write(message)
+            client_connection.write(pr.escape_buffer(message))
             client_connection.flush()
 
     threading.Thread(target=inbound, daemon=True).start()
     threading.Thread(target=outbound, daemon=True).start()
-
-
 
 
 if __name__ == '__main__':

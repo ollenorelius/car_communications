@@ -17,29 +17,6 @@ class CarController:
 
     pr = ProtocolReader()
 
-    def escape_buffer(self, buf):
-        """Escape start, end and escape bytes in original message."""
-        esc_byte = bytes({cb.ESC})
-        esc_escaped = bytes({cb.ESC}) + bytes({cb.ESC ^ cb.ESC_XOR})
-
-        start_byte = bytes({cb.START})
-        start_escaped = bytes({cb.ESC}) + bytes({cb.START ^ cb.ESC_XOR})
-
-        escaped = buf.replace(esc_byte, esc_escaped) \
-            .replace(start_byte, start_escaped)
-        return escaped
-
-    def unescape_buffer(self, buf):
-        """Remove effect of escape_buffer."""
-        esc_byte = bytes({cb.ESC})
-        esc_escaped = bytes({cb.ESC}) + bytes({cb.ESC ^ cb.ESC_XOR})
-
-        start_byte = bytes({cb.START})
-        start_escaped = bytes({cb.ESC}) + bytes({cb.START ^ cb.ESC_XOR})
-
-        escaped = buf.replace(start_escaped, start_byte) \
-            .replace(esc_escaped, esc_byte)
-        return escaped
 
     def __init__(self, address='autopi.local', port=8000):
         self.RC_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -55,7 +32,7 @@ class CarController:
                                       cb.REQ_PIC,
                                       struct.pack('>B', camera_id))
             print("get_picture got reply: " + str(reply))
-            if reply[0] == cb.R_OK:
+            if reply[0] == cb.R_OK_IMAGE_FOLLOWS:
                 print("receiving picture!")
                 print(reply)
                 dataL = struct.unpack('>L', reply[2:6])[0]
@@ -101,6 +78,7 @@ class CarController:
         with self.message_lock:
             with self.RC_connection_lock:
                 self.RC_connection.write(struct.pack('>B', cb.START))
+                self.RC_connection.write(struct.pack('>L', 2+len(data)))
                 self.RC_connection.write(struct.pack('>B', group))
                 self.RC_connection.write(struct.pack('>B', command))
                 if data != []:
@@ -118,8 +96,8 @@ class CarController:
         print("receiving message... ", end="")
         with self.RC_connection_lock:
             while not self.pr.messageInBuffer:
-                ser_byte = self.RC_connection.read(1)
-                self.pr.readByte(ser_byte)
+                ser_byte = self.RC_connection.read(self.pr.next_symbol_length)
+                self.pr.readBytes(ser_byte)
                 if ser_byte == b'':
                     timedout = True
                     print("timeout!")

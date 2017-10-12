@@ -9,7 +9,7 @@ class CommsHandler {
 
   All bytes are defined in CommsBytes.h
   */
-  const static int bufferSize = 12;
+  const static int bufferSize = 24;
   public: char commandBuffer[bufferSize];
   int bufferPosition = 0;
   public: bool activeMessage = false;
@@ -78,42 +78,49 @@ class CommsHandler {
   }
   public: bool sendOK() {
     Serial1.write(START);
+    Serial1.write(2L);
     Serial1.write(R_OK);
     Serial1.write(getCheckSum());
     Serial1.write(END);
   }
   public: bool sendHeartBeat() {
     Serial1.write(START);
+    Serial1.write(2L);
     Serial1.write(HEARTBEAT);
     Serial1.write(getCheckSum());
     Serial1.write(END);
   }
   public: bool sendHandShake(char handshake) {
     Serial1.write(START);
+    Serial1.write(2L);
     Serial1.write(!handshake);
     Serial1.write(getCheckSum());
     Serial1.write(END);
   }
   public: bool sendError() {
     Serial1.write(START);
+    Serial1.write(2L);
     Serial1.write(R_ERR);
     Serial1.write(getCheckSum());
     Serial1.write(END);
   }
   public: bool sendOutOfRange() {
     Serial1.write(START);
+    Serial1.write(2L);
     Serial1.write(R_VAL_OOR);
     Serial1.write(getCheckSum());
     Serial1.write(END);
   }
   public: bool sendFunctionNA() {
     Serial1.write(START);
+    Serial1.write(2L);
     Serial1.write(R_FUNC_NA);
     Serial1.write(getCheckSum());
     Serial1.write(END);
   }
   public: bool sendReqMalformed() {
     Serial1.write(START);
+    Serial1.write(2L);
     Serial1.write(R_MAL_REQ);
     Serial1.write(getCheckSum());
     Serial1.write(END);
@@ -271,42 +278,44 @@ void loop()
         break;
       }
     }
+    const int CMD_GROUP_BYTE = 4;
+    const int CMD_BYTE = 5;
     if(comms.messageInBuffer) {
       lastCommandMillis = millis();
-      if(comms.commandBuffer[0] == CMD_STATUS) {
-        if(comms.commandBuffer[1] == HEARTBEAT) {
+      if(comms.commandBuffer[CMD_GROUP_BYTE] == CMD_STATUS) {
+        if(comms.commandBuffer[CMD_BYTE] == HEARTBEAT) {
           comms.sendHeartBeat();
-        } else if(comms.commandBuffer[1] == HANDSHAKE) {
-          comms.sendHandShake(comms.commandBuffer[2]);
-        } else if(comms.commandBuffer[1] == ASK_STATUS) {
+        } else if(comms.commandBuffer[CMD_BYTE] == HANDSHAKE) {
+          comms.sendHandShake(comms.commandBuffer[CMD_BYTE+1]);
+        } else if(comms.commandBuffer[CMD_BYTE] == ASK_STATUS) {
           comms.sendFunctionNA();
         } else {
           comms.sendReqMalformed();
         }
 
-      } else if(comms.commandBuffer[0] == CMD_SET_PARAMS) {
-        if(comms.commandBuffer[1] == SET_MOT_THR) {
+      } else if(comms.commandBuffer[CMD_GROUP_BYTE] == CMD_SET_PARAMS) {
+        if(comms.commandBuffer[CMD_BYTE] == SET_MOT_THR) {
           comms.sendFunctionNA();
-        } else if(comms.commandBuffer[1] == DO_CALIB_GYRO) {
+        } else if(comms.commandBuffer[CMD_BYTE] == DO_CALIB_GYRO) {
           comms.sendFunctionNA();
         } else {
           comms.sendReqMalformed();
         }
 
-      } else if(comms.commandBuffer[0] == CMD_SPEED) {
-        if(comms.commandBuffer[1] == WHEEL_SPD) {
-          r_wheel = (int8_t) comms.commandBuffer[2];
+      } else if(comms.commandBuffer[CMD_GROUP_BYTE] == CMD_SPEED) {
+        if(comms.commandBuffer[CMD_BYTE] == WHEEL_SPD) {
+          r_wheel = (int8_t) comms.commandBuffer[CMD_BYTE+1];
           l_wheel = (int8_t) comms.commandBuffer[3];
           comms.sendOK();
 
-        } else if(comms.commandBuffer[1] == CAR_SPD) {
-          speed = (int) comms.commandBuffer[2];
+        } else if(comms.commandBuffer[CMD_BYTE] == CAR_SPD) {
+          speed = (int) comms.commandBuffer[CMD_BYTE+1];
           r_wheel = speed + turnRate;
           l_wheel = speed - turnRate;
           comms.sendOK();
 
-        } else if(comms.commandBuffer[1] == TURN_SPD) {
-          turnRate = (int) comms.commandBuffer[2];
+        } else if(comms.commandBuffer[CMD_BYTE] == TURN_SPD) {
+          turnRate = (int) comms.commandBuffer[CMD_BYTE+1];
           r_wheel = speed + turnRate;
           l_wheel = speed - turnRate;
           comms.sendOK();
@@ -315,23 +324,23 @@ void loop()
           comms.sendReqMalformed();
         }
 
-      } else if(comms.commandBuffer[0] == CMD_SPEED_CL) {
-        if(comms.commandBuffer[1] == DIST_CL) {
+      } else if(comms.commandBuffer[CMD_GROUP_BYTE] == CMD_SPEED_CL) {
+        if(comms.commandBuffer[CMD_BYTE] == DIST_CL) {
           comms.sendFunctionNA();
-        } else if(comms.commandBuffer[1] == TURN_CL) {
+        } else if(comms.commandBuffer[CMD_BYTE] == TURN_CL) {
           comms.sendFunctionNA();
-        } else if(comms.commandBuffer[1] == TURN_ABS_CL) {
+        } else if(comms.commandBuffer[CMD_BYTE] == TURN_ABS_CL) {
           comms.sendFunctionNA();
         } else {
           comms.sendReqMalformed();
         }
 
-      } else if(comms.commandBuffer[0] == REQ_SENS) {
-        if(comms.commandBuffer[1] == REQ_COMPASS) {
+      } else if(comms.commandBuffer[CMD_GROUP_BYTE] == REQ_SENS) {
+        if(comms.commandBuffer[CMD_BYTE] == REQ_COMPASS) {
           comms.sendFunctionNA();
-        } else if(comms.commandBuffer[1] == REQ_ACC) {
+        } else if(comms.commandBuffer[CMD_BYTE] == REQ_ACC) {
           comms.sendFunctionNA();
-        } else if(comms.commandBuffer[1] == REQ_GYRO) {
+        } else if(comms.commandBuffer[CMD_BYTE] == REQ_GYRO) {
           comms.sendFunctionNA();
         } else {
           comms.sendReqMalformed();
