@@ -60,9 +60,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def camera_thread(self):
         while True:
-            time.sleep(0.1)
+            time.sleep(0.0)
             temp_image = self.car.get_picture(0)
-            if temp_image != None:
+            if temp_image is not None:
                 self.picSize = (self.cameraView.size().width(),
                                 self.cameraView.size().height())
                 temp_image = temp_image.resize(self.picSize)

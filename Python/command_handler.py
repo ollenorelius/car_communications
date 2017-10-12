@@ -2,6 +2,13 @@
 import struct
 import comms_bytes as cb
 from queue import Queue
+import threading
+try:
+    import picamera
+except ImportError:
+    print("This should be run on the Raspberry Pi!")
+import io
+import time
 
 
 class CommandHandler:
@@ -10,6 +17,33 @@ class CommandHandler:
     car = []
     out_queue = Queue()
     in_queue = Queue()
+    image_lock = threading.RLock()
+    image = None
+
+    def camera_thread(self):
+        """Thread for capturing camera image asynchronously."""
+        camera = picamera.PiCamera()
+        camera.resolution = (320, 240)
+        camera.sensor_mode = 7
+        camera.shutter_speed = 10000
+        camera.framerate = 40
+        camera.rotation = 0
+
+        cam_stream = io.BytesIO()
+        for foo in camera.capture_continuous(output=cam_stream,
+                                             format='jpeg',
+                                             use_video_port=True,
+                                             quality=15,
+                                             thumbnail=None):
+            cam_stream.seek(0)
+            with self.image_lock:
+                self.image = cam_stream.read()
+            cam_stream.seek(0)
+            cam_stream.truncate()
+
+            # if no clients are connected, just chill ad wait to save power.
+            while(threading.active_count() < 3):
+                time.sleep(0.2)
 
     def escape_buffer(self, buf):
         """Escape start, end and escape bytes in original message."""
@@ -19,11 +53,8 @@ class CommandHandler:
         start_byte = bytes({cb.START})
         start_escaped = bytes({cb.ESC}) + bytes({cb.START ^ cb.ESC_XOR})
 
-        end_byte = bytes({cb.END})
-        end_escaped = bytes({cb.ESC}) + bytes({cb.END ^ cb.ESC_XOR})
         escaped = buf.replace(esc_byte, esc_escaped) \
-            .replace(start_byte, start_escaped) \
-            .replace(end_byte, end_escaped)
+            .replace(start_byte, start_escaped)
         return escaped
 
     def unescape_buffer(self, buf):
@@ -34,17 +65,15 @@ class CommandHandler:
         start_byte = bytes({cb.START})
         start_escaped = bytes({cb.ESC}) + bytes({cb.START ^ cb.ESC_XOR})
 
-        end_byte = bytes({cb.END})
-        end_escaped = bytes({cb.ESC}) + bytes({cb.END ^ cb.ESC_XOR})
-        escaped = buf.replace(esc_escaped, esc_byte) \
-            .replace(start_escaped, start_byte) \
-            .replace(end_escaped, end_byte)
+        escaped = buf.replace(start_escaped, start_byte) \
+            .replace(esc_escaped, esc_byte)
         return escaped
 
     def __init__(self, car=None):
         """Constructor. Pass the car object to be controlled."""
         self.car = car
-        threading.Thread(target=self.handle_message, )
+        threading.Thread(target=self.read_in_queue, daemon=True).start()
+        threading.Thread(target=self.camera_thread, daemon=True).start()
 
     def checksum(self, buf):
         """Create a simple checksum by XORing all the bytes in the message."""
@@ -108,6 +137,7 @@ class CommandHandler:
         if group == cb.CMD_STATUS:
             if command == cb.HEARTBEAT:
                 self.sendOK(message, data=None)
+                return 1
             elif command == cb.HANDSHAKE:
                 pass
             elif command == cb.ASK_STATUS:
@@ -140,11 +170,13 @@ class CommandHandler:
             elif command == cb.REQ_PIC:
                 print('Got picture request!')
                 global image
-                print("sending picture of size %s" % len(image))
-                self.sendOK(message, struct.pack('>L', len(image)))
-                img_msg = self.create_message(group=cb.R_OK_IMAGE_FOLLOWS,
-                                              command=None,
-                                              data=image)
+                print("sending picture of size %s" % len(self.image))
+                with self.image_lock:
+                    img_msg = self.create_message(group=cb.R_OK_IMAGE_FOLLOWS,
+                                                  command=None,
+                                                  data=self.image)
+                print("escaped length %s" % len(img_msg))
+                self.sendOK(message, struct.pack('>L', len(img_msg)))
                 self.queue_message(img_msg)
                 print('sent picture!')
                 return 1

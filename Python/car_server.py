@@ -18,15 +18,14 @@ inbound_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 inbound_socket.bind(('0.0.0.0', 8000))
 inbound_socket.listen(0)
 
+image = b'asdf'
+
 car = CarSerial()
 ch = CommandHandler(car)
 
 timing = False
 image_lock = threading.RLock()
 connection_lock = threading.RLock()
-
-
-image = b'asdf'
 
 
 def time_op(start, name):
@@ -37,32 +36,6 @@ def time_op(start, name):
     return time.time()
 
 
-def camera_thread():
-    """Thread for capturing camera image asynchronously."""
-    global image
-
-    camera = picamera.PiCamera()
-    camera.resolution = (640, 480)
-    camera.sensor_mode = 7
-    camera.shutter_speed = 10000
-    camera.framerate = 40
-    camera.rotation = 180
-
-    cam_stream = io.BytesIO()
-    for foo in camera.capture_continuous(output=cam_stream,
-                                         format='jpeg',
-                                         use_video_port=True,
-                                         quality=15,
-                                         thumbnail=None):
-        cam_stream.seek(0)
-        with image_lock:
-            image = cam_stream.read()
-        cam_stream.seek(0)
-        cam_stream.truncate()
-
-        # if no clients are connected, just chill ad wait to save power.
-        while(threading.active_count() < 3):
-            time.sleep(0.2)
 
 
 def network_thread(inbound_socket):
@@ -85,6 +58,7 @@ def network_thread(inbound_socket):
         while True:
             message = ch.out_queue.get()
             client_connection.write(message)
+            client_connection.flush()
 
     threading.Thread(target=inbound, daemon=True).start()
     threading.Thread(target=outbound, daemon=True).start()
@@ -93,7 +67,7 @@ def network_thread(inbound_socket):
 
 
 if __name__ == '__main__':
-    threading.Thread(target=camera_thread, daemon=True).start()
+
     while True:
         connection, addr = inbound_socket.accept()
         threading.Thread(target=network_thread, args=[connection]).start()
