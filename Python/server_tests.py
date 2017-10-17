@@ -1,8 +1,14 @@
+"""
+Unit tests for the server application.
+
+May need to be run on the Raspberry Pi.
+"""
 import car_server
 import unittest
 
 
 class server_tests(unittest.TestCase):
+    """Main test class."""
 
     esc_inputs = [b'\x7d\x7e',
                   b'\x7d\x7e\x7e',
@@ -18,9 +24,10 @@ class server_tests(unittest.TestCase):
                    b's}df}gs{[}[^^}}]]}~}}~~}}}',
                    b'sd}]f~g}s}{[}[^}}]]}]}]}}~}}}']
 
-
     ch = car_server.CommandHandler()
+
     def test_escape_buffer(self):
+        """Test that escaping characters works."""
         test_count = len(self.esc_inputs)
         for i in range(test_count):
             self.assertEqual(
@@ -28,7 +35,7 @@ class server_tests(unittest.TestCase):
                     buf=self.esc_inputs[i]), self.esc_results[i])
 
     def test_unescape_buffer(self):
-
+        """Test that de-escaping characters works."""
         test_count = len(self.esc_inputs)
         for i in range(test_count):
             self.assertEqual(
@@ -36,6 +43,7 @@ class server_tests(unittest.TestCase):
                     buf=self.esc_results[i]), self.esc_inputs[i])
 
     def test_escape_loop(self):
+        """Integration test of escaping data."""
         for d in self.random_data:
             forward = self.ch.escape_buffer(d)
             backward = self.ch.unescape_buffer(forward)

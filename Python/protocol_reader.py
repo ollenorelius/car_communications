@@ -1,3 +1,4 @@
+"""Contains class used for reading the protocol."""
 import comms_bytes as cb
 import struct
 
@@ -6,51 +7,53 @@ class ProtocolReader:
     """Buffer for messages arriving from network socket."""
 
     buf = b''
-    activeMessage = False
-    nextCharEscaped = False
-    messageInBuffer = False
+    active_message = False
+    next_char_escaped = False
+    message_in_buffer = False
     next_symbol_length = 1
     incoming_data_length = False
+
     def emptyBuffer(self):
         """Small wrapper to make code clearer."""
         self.buf = b''
-        self.nextCharEscaped = False
-        self.messageInBuffer = False
+        self.next_char_escaped = False
+        self.message_in_buffer = False
         self.next_symbol_length = 1
 
-    def readBytes(self, inputBytes):
+    def readBytes(self, input_bytes):
         """
         Handle a byte package incoming.
 
-        inputBytes is a byte string, representing one symbol. A symbol may be
+        input_bytes is a byte string, representing one symbol. A symbol may be
         a start or end byte  or a data packet.
         """
-        if inputBytes not in [b'', b'\x00']:
-            print("activeMessage: " + str(self.activeMessage) + " " + str(inputBytes))
-        if len(inputBytes) == 1:
-            if int.from_bytes(inputBytes, 'big') == cb.START and \
-                    self.activeMessage is False:
+        if input_bytes not in [b'', b'\x00']:
+            print("active_message: "
+                  + str(self.active_message)
+                  + " " + str(input_bytes))
+        if len(input_bytes) == 1:
+            if int.from_bytes(input_bytes, 'big') == cb.START and \
+                    self.active_message is False:
                 self.emptyBuffer()
-                self.activeMessage = True
+                self.active_message = True
                 self.next_symbol_length = 4
                 self.incoming_data_length = True
                 return 1
 
-            if int.from_bytes(inputBytes, 'big') == cb.END \
-                    and self.activeMessage is True:
-                self.messageInBuffer = True
-                self.activeMessage = False
+            if int.from_bytes(input_bytes, 'big') == cb.END \
+                    and self.active_message is True:
+                self.message_in_buffer = True
+                self.active_message = False
                 self.next_symbol_length = 1
                 return 1
 
         if self.incoming_data_length:
-            self.next_symbol_length = struct.unpack('>L', inputBytes)[0]
+            self.next_symbol_length = struct.unpack('>L', input_bytes)[0]
             self.incoming_data_length = False
             return 1
 
-
-        if self.activeMessage:
-            self.buf += inputBytes
+        if self.active_message:
+            self.buf += input_bytes
             self.next_symbol_length = 1
 
     def create_message(self, group, command, data, chk=None):
