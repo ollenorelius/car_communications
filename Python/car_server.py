@@ -13,19 +13,6 @@ from protocol_reader import ProtocolReader
 from command_handler import CommandHandler
 
 
-inbound_socket = socket.socket()
-inbound_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-inbound_socket.bind(('0.0.0.0', 8000))
-inbound_socket.listen(0)
-
-image = b'asdf'
-
-car = CarSerial()
-ch = CommandHandler(car)
-
-timing = False
-image_lock = threading.RLock()
-connection_lock = threading.RLock()
 
 
 def time_op(start, name):
@@ -58,7 +45,7 @@ def network_thread(inbound_socket):
     def outbound():
         while connection_up:
             message = ch.out_queue.get()
-            client_connection.write(pr.escape_buffer(message))
+            client_connection.write(message)
             client_connection.flush()
 
     threading.Thread(target=inbound, daemon=True).start()
@@ -66,6 +53,19 @@ def network_thread(inbound_socket):
 
 
 if __name__ == '__main__':
+    inbound_socket = socket.socket()
+    inbound_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    inbound_socket.bind(('0.0.0.0', 8000))
+    inbound_socket.listen(0)
+
+    image = b'asdf'
+
+    car = CarSerial()
+    ch = CommandHandler(car)
+
+    timing = False
+    image_lock = threading.RLock()
+    connection_lock = threading.RLock()
 
     while True:
         connection, addr = inbound_socket.accept()
