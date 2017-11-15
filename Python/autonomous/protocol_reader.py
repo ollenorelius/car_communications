@@ -28,9 +28,9 @@ class ProtocolReader:
         a start or end byte  or a data packet.
         """
         if input_bytes not in [b'', b'\x00']:
-            print("active_message: "
+            """print("active_message: "
                   + str(self.active_message)
-                  + " " + str(input_bytes))
+                  + " " + str(input_bytes))"""
         if len(input_bytes) == 1:
             if int.from_bytes(input_bytes, 'big') == cb.START and \
                     self.active_message is False:

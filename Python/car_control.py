@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import threading
 from PIL import Image, ImageQt, ImageDraw, ImageFont, ImageOps
 import time
-from car_controller import CarController
+from autonomous.car_controller import CarController
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
