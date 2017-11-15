@@ -54,10 +54,10 @@ def network_thread(inbound_socket):
         while connection_up:
             try:
                 message = ch.out_queue.get(timeout=1)
+                client_connection.write(message)
+                client_connection.flush()
             except queue.Empty:
                 pass
-            client_connection.write(message)
-            client_connection.flush()
         print("Outbound thread closed!")
 
     threading.Thread(target=inbound, daemon=True).start()

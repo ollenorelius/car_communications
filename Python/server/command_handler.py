@@ -6,7 +6,7 @@ import threading
 try:
     import picamera
 except ImportError:
-    print("This should be run on the Raspberry Pi!")
+    print("This should be run on the Raspberry Pi! (If you are running on the Pi, something's up with the camera. Check the connection.)")
 import io
 import time
 from server.protocol_reader import ProtocolReader
