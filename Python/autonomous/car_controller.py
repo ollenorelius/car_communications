@@ -5,8 +5,8 @@ import threading
 import time
 import io
 import struct
-import comms_bytes as cb
-from protocol_reader import ProtocolReader
+import autonomous.comms_bytes as cb
+from autonomous.protocol_reader import ProtocolReader
 from PIL import Image, ImageQt, ImageDraw, ImageFont, ImageOps
 
 class CarController:
@@ -40,10 +40,10 @@ class CarController:
                 if dataL > 0:
                     self.image_stream.seek(0)
                     with self.RC_connection_lock:
-                        while not self.pr.messageInBuffer:
+                        while not self.pr.message_in_buffer:
                             self.pr.readByte(self.RC_connection.read(1))
                         self.image_stream.write(self.pr.buf)
-                        self.pr.messageInBuffer = False
+                        self.pr.message_in_buffer = False
                         #self.image_stream.write(self.RC_connection.read(dataL+2))
                     # Rewind the stream, open it as an image with PIL and do some
                     # processing on it
@@ -95,7 +95,7 @@ class CarController:
         timedout = False
         print("receiving message... ", end="")
         with self.RC_connection_lock:
-            while not self.pr.messageInBuffer:
+            while not self.pr.message_in_buffer:
                 ser_byte = self.RC_connection.read(self.pr.next_symbol_length)
                 self.pr.readBytes(ser_byte)
                 if ser_byte == b'':
@@ -103,10 +103,10 @@ class CarController:
                     print("timeout!")
         print("recv_message got %s" % self.pr.buf)
         if not timedout:
-            self.pr.messageInBuffer = False
+            self.pr.message_in_buffer = False
             return self.pr.buf
         else:
-            self.pr.messageInBuffer = False
+            self.pr.message_in_buffer = False
             return False
 
     def set_speed(self, speed):

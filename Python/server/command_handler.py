@@ -1,6 +1,6 @@
 """A class for parsing ad reacting to inbound network messages."""
 import struct
-import comms_bytes as cb
+import server.comms_bytes as cb
 from queue import Queue
 import threading
 try:
@@ -9,7 +9,7 @@ except ImportError:
     print("This should be run on the Raspberry Pi!")
 import io
 import time
-from protocol_reader import ProtocolReader
+from server.protocol_reader import ProtocolReader
 
 
 class CommandHandler:
@@ -51,7 +51,12 @@ class CommandHandler:
         """Constructor. Pass the car object to be controlled."""
         self.car = car
         threading.Thread(target=self.read_in_queue, daemon=True).start()
-        threading.Thread(target=self.camera_thread, daemon=True).start()
+        try:
+            threading.Thread(target=self.camera_thread, daemon=True).start()
+        except picamera.exc.PiCameraMMALError:
+            print("Could not init camera!")
+        except picamera.exc.PiCameraError:
+            print("Could not init camera! Make sure it is plugged in right, and then run sudo raspi-config")
 
     def sendOK(self, buf, data=None):
         """
@@ -81,6 +86,11 @@ class CommandHandler:
         while True:
             message = self.in_queue.get()
             self.handle_message(message)
+
+    def stop_car(self):
+        print("stopping car!")
+        self.car.send_message(group=cb.CMD_SPEED, command=cb.TURN_SPD, data=struct.pack('>b', 0))
+        self.car.send_message(group=cb.CMD_SPEED, command=cb.CAR_SPD, data=struct.pack('>b', 0))
 
     def handle_message(self, message):
         """Handle an inbound message."""

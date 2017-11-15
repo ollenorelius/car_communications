@@ -3,7 +3,7 @@ Unit tests for the server application.
 
 May need to be run on the Raspberry Pi.
 """
-import car_server
+import server.car_server
 import unittest
 
 

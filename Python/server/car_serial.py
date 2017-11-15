@@ -1,10 +1,10 @@
 """Connection handler for Infotiv Autonomous car platform."""
 
 import serial
-import comms_bytes as cb
+import server.comms_bytes as cb
 import threading
 import time
-from protocol_reader import ProtocolReader
+from server.protocol_reader import ProtocolReader
 import struct
 
 class CarSerial:
@@ -69,7 +69,7 @@ class CarSerial:
     def recv_message(self):
         """Read an incoming message from Arduino."""
         timedout = False
-        while not self.pr.messageInBuffer:
+        while not self.pr.message_in_buffer:
             ser_byte = self.connection.read(self.pr.next_symbol_length)
             self.pr.readBytes(ser_byte)
             if ser_byte == b'':

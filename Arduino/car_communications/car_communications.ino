@@ -78,6 +78,7 @@ class CommsHandler {
   }
   public: bool sendOK() {
     Serial1.write(START);
+    Serial1.write(0L);
     Serial1.write(2L);
     Serial1.write(R_OK);
     Serial1.write(getCheckSum());
@@ -85,6 +86,7 @@ class CommsHandler {
   }
   public: bool sendHeartBeat() {
     Serial1.write(START);
+    Serial1.write(0L);
     Serial1.write(2L);
     Serial1.write(HEARTBEAT);
     Serial1.write(getCheckSum());
@@ -92,6 +94,7 @@ class CommsHandler {
   }
   public: bool sendHandShake(char handshake) {
     Serial1.write(START);
+    Serial1.write(0L);
     Serial1.write(2L);
     Serial1.write(!handshake);
     Serial1.write(getCheckSum());
@@ -99,6 +102,7 @@ class CommsHandler {
   }
   public: bool sendError() {
     Serial1.write(START);
+    Serial1.write(0L);
     Serial1.write(2L);
     Serial1.write(R_ERR);
     Serial1.write(getCheckSum());
@@ -106,6 +110,7 @@ class CommsHandler {
   }
   public: bool sendOutOfRange() {
     Serial1.write(START);
+    Serial1.write(0L);
     Serial1.write(2L);
     Serial1.write(R_VAL_OOR);
     Serial1.write(getCheckSum());
@@ -113,6 +118,7 @@ class CommsHandler {
   }
   public: bool sendFunctionNA() {
     Serial1.write(START);
+    Serial1.write(0L);
     Serial1.write(2L);
     Serial1.write(R_FUNC_NA);
     Serial1.write(getCheckSum());
@@ -120,6 +126,7 @@ class CommsHandler {
   }
   public: bool sendReqMalformed() {
     Serial1.write(START);
+    Serial1.write(0L);
     Serial1.write(2L);
     Serial1.write(R_MAL_REQ);
     Serial1.write(getCheckSum());
