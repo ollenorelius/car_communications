@@ -3,7 +3,7 @@ Unit tests for the server application.
 
 May need to be run on the Raspberry Pi.
 """
-import server.car_server
+import server.car_server as car_server
 import unittest
 
 
@@ -31,7 +31,7 @@ class server_tests(unittest.TestCase):
         test_count = len(self.esc_inputs)
         for i in range(test_count):
             self.assertEqual(
-                self.ch.escape_buffer(
+                self.ch.pr.escape_buffer(
                     buf=self.esc_inputs[i]), self.esc_results[i])
 
     def test_unescape_buffer(self):
@@ -39,22 +39,22 @@ class server_tests(unittest.TestCase):
         test_count = len(self.esc_inputs)
         for i in range(test_count):
             self.assertEqual(
-                self.ch.unescape_buffer(
+                self.ch.pr.unescape_buffer(
                     buf=self.esc_results[i]), self.esc_inputs[i])
 
     def test_escape_loop(self):
         """Integration test of escaping data."""
         for d in self.random_data:
-            forward = self.ch.escape_buffer(d)
-            backward = self.ch.unescape_buffer(forward)
+            forward = self.ch.pr.escape_buffer(d)
+            backward = self.ch.pr.unescape_buffer(forward)
             self.assertEqual(d, backward)
         for d in self.esc_inputs:
-            forward = self.ch.escape_buffer(d)
-            backward = self.ch.unescape_buffer(forward)
+            forward = self.ch.pr.escape_buffer(d)
+            backward = self.ch.pr.unescape_buffer(forward)
             self.assertEqual(d, backward)
         for d in self.esc_results:
-            forward = self.ch.escape_buffer(d)
-            backward = self.ch.unescape_buffer(forward)
+            forward = self.ch.pr.escape_buffer(d)
+            backward = self.ch.pr.unescape_buffer(forward)
             self.assertEqual(d, backward)
 
 

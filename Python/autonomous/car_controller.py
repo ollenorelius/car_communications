@@ -31,34 +31,23 @@ class CarController:
             reply = self.send_message(cb.REQ_SENS,
                                       cb.REQ_PIC,
                                       struct.pack('>B', camera_id))
-            #print("get_picture got reply: " + str(reply))
+            print("get_picture got reply: " + str(reply[0:20]))
             if reply[0] == cb.R_OK_IMAGE_FOLLOWS:
                 print("receiving picture!")
-                #print(reply)
-                dataL = struct.unpack('>L', reply[2:6])[0]
-                print("picture size: %s bytes" % dataL)
-                if dataL > 0:
-                    self.image_stream.seek(0)
-                    with self.RC_connection_lock:
-                        while not self.pr.message_in_buffer:
-                            self.pr.readBytes(self.RC_connection.read(self.pr.next_symbol_length))
-                        self.image_stream.write(self.pr.buf)
-                        self.pr.message_in_buffer = False
-                        #self.image_stream.write(self.RC_connection.read(dataL+2))
-                    # Rewind the stream, open it as an image with PIL and do some
-                    # processing on it
-                    self.image_stream.seek(0)
-                    #print("escaped picture is %s" % len(self.image_stream))
-                    img_bytes = self.pr.unescape_buffer(self.image_stream.getvalue()[2:])
-                    print("deescaped picture is %s" % len(img_bytes))
-                    try:
-                        temp_image = Image.open(io.BytesIO(img_bytes))
-                    except OSError:
-                        print("Received invalid image! Len: len(%s)" % len(img_bytes))
-                        return None
-                    return temp_image
-                else:
+
+                self.image_stream.seek(0)
+                self.image_stream.truncate()
+                self.image_stream.write(reply[2:])
+                #print("escaped picture is %s" % len(self.image_stream))
+                img_bytes = self.image_stream.getvalue()
+                print("deescaped picture is %s" % len(img_bytes))
+                try:
+                    temp_image = Image.open(io.BytesIO(img_bytes))
+                except OSError:
+                    print("Received invalid image! Len: len(%s)" % len(img_bytes))
                     return None
+                return temp_image
+
 
     def send_message(self, group, command, data=[]):
         """
@@ -101,10 +90,11 @@ class CarController:
                 if ser_byte == b'':
                     timedout = True
                     print("timeout!")
-        #print("recv_message got %s" % self.pr.buf)
+        #print("recv_message got %s" % self.pr.get_buffer())
         if not timedout:
+            print("got message.")
             self.pr.message_in_buffer = False
-            return self.pr.buf
+            return self.pr.get_buffer()
         else:
             self.pr.message_in_buffer = False
             return False

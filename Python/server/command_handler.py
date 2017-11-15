@@ -142,7 +142,6 @@ class CommandHandler:
                                                   command=None,
                                                   data=self.image)
                 print("escaped length %s" % len(img_msg))
-                self.sendOK(message, struct.pack('>L', len(img_msg)))
                 self.queue_message(img_msg)
                 print('sent picture!')
                 return 1

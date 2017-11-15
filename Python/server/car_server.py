@@ -34,7 +34,6 @@ def network_thread(inbound_socket):
         try:
             while connection_up:
                 while not pr.message_in_buffer:
-                    print(pr.next_symbol_length)
                     inputBytes = client_connection.read(pr.next_symbol_length)
                     if inputBytes == b'':
                         print("Got empty bytes, shutting down connection")
