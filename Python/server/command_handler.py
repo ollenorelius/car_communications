@@ -89,8 +89,8 @@ class CommandHandler:
 
     def stop_car(self):
         print("stopping car!")
-        self.car.send_message(group=cb.CMD_SPEED, command=cb.TURN_SPD, data=struct.pack('>b', 0))
-        self.car.send_message(group=cb.CMD_SPEED, command=cb.CAR_SPD, data=struct.pack('>b', 0))
+        self.car.send_message(group=cb.CMD_SPEED, command=cb.TURN_SPD, data=struct.pack('>h', 0))
+        self.car.send_message(group=cb.CMD_SPEED, command=cb.CAR_SPD, data=struct.pack('>h', 0))
 
     def handle_message(self, message):
         """Handle an inbound message."""
@@ -133,17 +133,17 @@ class CommandHandler:
             elif command == cb.REQ_GYRO:
                 pass
             elif command == cb.REQ_PIC:
-                print('Got picture request!')
+                #print('Got picture request!')
                 global image
-                print("sending picture of size %s" % len(self.image))
+                #print("sending picture of size %s" % len(self.image))
                 with self.image_lock:
                     img_msg = self.pr.create_message(
                                                   group=cb.R_OK_IMAGE_FOLLOWS,
                                                   command=None,
                                                   data=self.image)
-                print("escaped length %s" % len(img_msg))
+                #print("escaped length %s" % len(img_msg))
                 self.queue_message(img_msg)
-                print('sent picture!')
+                #print('sent picture!')
                 return 1
 
         reply = self.car.send_message(group=group, command=command, data=data)

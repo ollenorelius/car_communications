@@ -71,9 +71,12 @@ class CarSerial:
         timedout = False
         while not self.pr.message_in_buffer:
             ser_byte = self.connection.read(self.pr.next_symbol_length)
+            if ser_byte != b'':
+                print(ser_byte)
             self.pr.readBytes(ser_byte)
             if ser_byte == b'':
                 timedout = True
+            print(self.pr.buf)
         if not timedout:
             return self.pr.buf
         else:

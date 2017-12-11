@@ -11,36 +11,43 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     image_lock = threading.Lock()
 
-    car = CarController(address='autopi.local', port=8000)
+    car = CarController(address='autonomous-platform.local', port=8000)
 
-    picSize = (640, 480)
+    picSize = (1920, 1080)
+    speed = 0
+    turn = 0
+
+    def set_speed(self, s): self.speed = s
+
+    def set_turnrate(self, t): self.turn = t
 
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent=parent)
         threading.Thread(target=self.camera_thread, daemon=True).start()
+        threading.Thread(target=self.command_thread, daemon=True).start()
         self.setupUi(self)
 
         self.key_down_actions = {
-            QtCore.Qt.Key_W: self.car.set_speed,
-            QtCore.Qt.Key_S: self.car.set_speed,
-            QtCore.Qt.Key_A: self.car.set_turnrate,
-            QtCore.Qt.Key_D: self.car.set_turnrate,
+            QtCore.Qt.Key_W: self.set_speed,
+            QtCore.Qt.Key_S: self.set_speed,
+            QtCore.Qt.Key_A: self.set_turnrate,
+            QtCore.Qt.Key_D: self.set_turnrate,
             QtCore.Qt.Key_Q: self.close
         }
 
         self.key_arguments = {
-            QtCore.Qt.Key_W: 127,
-            QtCore.Qt.Key_S: -127,
-            QtCore.Qt.Key_A: 100,
-            QtCore.Qt.Key_D: -100,
+            QtCore.Qt.Key_W: 250,
+            QtCore.Qt.Key_S: -250,
+            QtCore.Qt.Key_A: 150,
+            QtCore.Qt.Key_D: -150,
             QtCore.Qt.Key_Q: None
         }
 
         self.key_up_actions = {
-            QtCore.Qt.Key_W: self.car.set_speed,
-            QtCore.Qt.Key_S: self.car.set_speed,
-            QtCore.Qt.Key_A: self.car.set_turnrate,
-            QtCore.Qt.Key_D: self.car.set_turnrate,
+            QtCore.Qt.Key_W: self.set_speed,
+            QtCore.Qt.Key_S: self.set_speed,
+            QtCore.Qt.Key_A: self.set_turnrate,
+            QtCore.Qt.Key_D: self.set_turnrate,
             QtCore.Qt.Key_Q: self.close
         }
 
@@ -71,6 +78,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     image = temp_image
                     self.cameraView.setPixmap(
                                 QtGui.QPixmap.fromImage(ImageQt.ImageQt(image)))
+
+    def command_thread(self):
+        while True:
+            self.car.set_speed(self.speed)
+            self.car.set_turnrate(self.turn)
+            print("Turn rate: %s, speed: %s-----------------------------------------" % (self.turn, self.speed))
+            time.sleep(0.2)
 
 
 if __name__ == "__main__":

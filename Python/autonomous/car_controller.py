@@ -19,28 +19,30 @@ class CarController:
 
 
     def __init__(self, address='autopi.local', port=8000):
+        self.RC_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.RC_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.RC_socket.settimeout(100)
         self.RC_socket.connect((address, port))
         self.RC_connection = self.RC_socket.makefile('rwb')
         threading.Thread(target=self.heartbeat_thread, daemon=True).start()
+        print("Car controller init OK!")
 
     def get_picture(self, camera_id):
         with self.message_lock:
-            print("sending pic rq")
+            #print("sending pic rq")
             reply = self.send_message(cb.REQ_SENS,
                                       cb.REQ_PIC,
                                       struct.pack('>B', camera_id))
-            print("get_picture got reply: " + str(reply[0:20]))
+            #print("get_picture got reply: " + str(reply[0:20]))
             if reply[0] == cb.R_OK_IMAGE_FOLLOWS:
-                print("receiving picture!")
+                #print("receiving picture!")
 
                 self.image_stream.seek(0)
                 self.image_stream.truncate()
                 self.image_stream.write(reply[2:])
                 #print("escaped picture is %s" % len(self.image_stream))
                 img_bytes = self.image_stream.getvalue()
-                print("deescaped picture is %s" % len(img_bytes))
+                #print("deescaped picture is %s" % len(img_bytes))
                 try:
                     temp_image = Image.open(io.BytesIO(img_bytes))
                 except OSError:
@@ -71,8 +73,12 @@ class CarController:
                 self.RC_connection.write(struct.pack('>B', group))
                 self.RC_connection.write(struct.pack('>B', command))
                 if data != []:
-                    #print(data)
-                    self.RC_connection.write(data)
+                    if len(data) > 1:
+                        for d in data:
+                            print(bytes([d]))
+                            self.RC_connection.write(bytes([d]))
+                    else:
+                        self.RC_connection.write(data)
                 self.RC_connection.write(struct.pack('>B', cb.END))
                 self.RC_connection.flush()
             reply = self.recv_message()
@@ -100,10 +106,11 @@ class CarController:
             return False
 
     def set_speed(self, speed):
-        self.send_message(cb.CMD_SPEED, cb.CAR_SPD, struct.pack('>b', speed))
+        self.send_message(cb.CMD_SPEED, cb.CAR_SPD, struct.pack('>h', speed))
+        print(struct.pack('>h', speed))
 
     def set_turnrate(self, rate):
-        self.send_message(cb.CMD_SPEED, cb.TURN_SPD, struct.pack('>b', rate))
+        self.send_message(cb.CMD_SPEED, cb.TURN_SPD, struct.pack('>h', rate))
 
     def heartbeat_thread(self):
         """Thread method for sending regular heartbeat."""
