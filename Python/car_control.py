@@ -36,10 +36,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         }
 
         self.key_arguments = {
-            QtCore.Qt.Key_W: 250,
-            QtCore.Qt.Key_S: -250,
-            QtCore.Qt.Key_A: 150,
-            QtCore.Qt.Key_D: -150,
+            QtCore.Qt.Key_W: 350,
+            QtCore.Qt.Key_S: -350,
+            QtCore.Qt.Key_A: 250,
+            QtCore.Qt.Key_D: -250,
             QtCore.Qt.Key_Q: None
         }
 
@@ -83,8 +83,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         while True:
             self.car.set_speed(self.speed)
             self.car.set_turnrate(self.turn)
-            print("Turn rate: %s, speed: %s-----------------------------------------" % (self.turn, self.speed))
-            time.sleep(0.2)
+
 
 
 if __name__ == "__main__":
