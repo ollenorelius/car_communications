@@ -1,9 +1,13 @@
 PROTOCOL:
 
 command:
-<start> <command group byte> <command byte> <parameter byte 1-8> <end byte>
+<start><dataL><command group byte> <command byte> <data byte 0-N> <end byte>
+DataL is 2 + data byte count, the entire message excluding start & end.
+
 response:
-<start> <status> <response bytes 1-8> <end>
+<start><dataL><status> <chksum> <response bytes 0-N> <end>
+chksum is XOR of all received bytes excluding start, stop.
+
 
 Arduino is slave, speaks only when spoken to
 Heartbeat should be sent every 0.5 seconds, else arduino stops and sends 0x32
