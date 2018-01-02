@@ -34,6 +34,14 @@ REQ_COMPASS = 0x01
 REQ_ACC = 0x02
 REQ_GYRO = 0x03
 REQ_PIC = 0x04  # int8 cameraID
+REQ_LIDAR = 0x05  # int8 lidarID
+
+SENS = 0x30
+SENS_LIDAR = 0x01  # int8 quality, int16 angle, int16 distance
+SENS_ACC = 0x02  # int16 X, int16 Y, int16 Z
+SENS_GYRO = 0x03  # int16 X, int16 Y, int16 Z
+SENS_COMPASS = 0x04  # int16 heading
+SENS_SPEED = 0x05  # int16 speed, int16 turn
 
 
 # Responses
