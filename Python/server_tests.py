@@ -4,7 +4,7 @@ Unit tests for the server application.
 May need to be run on the Raspberry Pi.
 """
 
-import server.message as msg
+import common.message as msg
 import unittest
 
 

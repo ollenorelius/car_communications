@@ -1,14 +1,14 @@
 """Connection handler for Infotiv Autonomous car platform."""
 
 import serial
-import server.comms_bytes as cb
+import common.comms_bytes as cb
 import threading
 import time
 from server.protocol_reader import ProtocolReader
 import struct
 import queue
 import io
-import message as msg
+import common.message as msg
 try:
     import picamera
 except ImportError:
@@ -27,7 +27,7 @@ class VehicleHandler:
     outbound_serial_queue = queue.Queue()
     inbound_serial_queue = queue.Queue()
 
-    def __init__(self, serial_port='/dev/ttyAMA0', baudrate=115200):
+    def __init__(self, serial_port='/dev/ttyAMA0', baudrate=2000000):
         """
         Constructor for the VehicleHandler.
 
@@ -72,10 +72,11 @@ class VehicleHandler:
         """Thread function for writing messages to the serial port."""
         while True:
             message = self.outbound_serial_queue.get()
-            self.connection.write(message.get_network_message())
+            #print("Sending %s to car" % message.get_serial_msg())
+            self.connection.write(message.get_serial_msg())
 
     def handle_inbound(self):
-        """Default inbound serial queue handler"""
+        """Default inbound serial queue handler. Discards messages."""
         while True:
             message = self.inbound_serial_queue.get()
 
@@ -99,8 +100,11 @@ class CarHandler(VehicleHandler):
 
     image_lock = threading.RLock()
     lidar_buffer = deque(maxlen=400)
+    current_speed = 0
+    current_turn_rate = 0
+    has_image = False
 
-    def __init__(self, serial_port, baudrate):
+    def __init__(self, serial_port='/dev/ttyAMA0', baudrate=2000000):
         VehicleHandler.__init__(self,
                                 serial_port=serial_port,
                                 baudrate=baudrate)
@@ -108,15 +112,18 @@ class CarHandler(VehicleHandler):
         threading.Thread(target=self.camera_thread,
                          args=(),
                          daemon=True).start()
+        threading.Thread(target=self.handle_inbound,
+                         args=(),
+                         daemon=True).start()
 
     def camera_thread(self):
         """Thread for capturing camera image asynchronously."""
         camera = picamera.PiCamera()
-        camera.resolution = (320, 240)
-        camera.sensor_mode = 7
-        camera.shutter_speed = 10000
-        camera.framerate = 40
-        camera.rotation = 0
+        camera.resolution = (640, 480)
+        #camera.sensor_mode = 7
+        #camera.shutter_speed = 10000
+        camera.framerate = 30
+        camera.rotation = 180
 
         cam_stream = io.BytesIO()
         for foo in camera.capture_continuous(output=cam_stream,
@@ -127,12 +134,14 @@ class CarHandler(VehicleHandler):
             cam_stream.seek(0)
             with self.image_lock:
                 self.image = cam_stream.read()
+            self.has_image = True
             cam_stream.seek(0)
             cam_stream.truncate()
 
             # if no clients are connected, just chill ad wait to save power.
+
             while(threading.active_count() < 3):
-                time.sleep(0.2)
+                pass
 
     def handle_inbound(self):
         """Specific serial command handler for Infotiv Car."""
@@ -141,13 +150,44 @@ class CarHandler(VehicleHandler):
 
             if message.group == cb.SENS:
                 if message.command == cb.SENS_LIDAR:
-                    map(function, sequence)
+                    if len(message.data) % 5 != 0:
+                        print("Got invalid lidar packet, len is %s!"
+                              % len(message.data))
+                        continue
+                    #print("raw lidar data is %d", message.data)
+                    lidardata = map(self.decode_lidar_chunk,
+                                    self.lidar_chunks(message.data))
+
+                    self.lidar_buffer.extend(list(lidardata))
+
+                elif message.command == cb.SENS_SPEED:
+                    ret = struct.unpack(">hh", message.data)
+                    self.current_speed = ret[0]
+                    self.current_turn_rate = ret[1]
+                elif message.command == cb.SENS_WHEEL:
+                    wheels = struct.unpack(">hhhh", message.data)
+                    self.current_wheel_speeds = wheels
+
+            elif message.group == cb.CMD_STATUS:
+                if message.command == cb.HEARTBEAT:
+                    #print("Got HB from DK")
+                    min_dist = 100000
+                    ang = -1
+                    for d in self.lidar_buffer:
+                        if d[1] < min_dist and d[0] > 1:
+                            min_dist = d[1]
+                            ang = d[2]
+                    #print("Closest point to robot is %s mm away at angle %s" % (min_dist/4, ang/64))
+                if message.command == cb.HANDSHAKE:
+                    pass
+                if message.command == cb.ASK_STATUS:
+                    pass
+
 
     def decode_lidar_chunk(self, chunk):
         """Map a chunk of lidar data into (quality, distance, angle)."""
-        quality = struct.unpack(">B", chunk[0])
-        angle = struct.unpack(">H", chunk[1:3])
-        distance = struct.unpack(">H", chunk[3:5])
+        #print("decoding chunk: %s" % chunk)
+        return struct.unpack(">BHH", chunk)
 
     def lidar_chunks(self, buf):
         """Generator for getting lidar data one point at a time."""

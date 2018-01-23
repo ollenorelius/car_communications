@@ -1,5 +1,5 @@
 """Contains class used for reading the protocol."""
-import autonomous.comms_bytes as cb
+import common.comms_bytes as cb
 import struct
 
 

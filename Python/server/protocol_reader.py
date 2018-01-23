@@ -1,7 +1,7 @@
 """Contains class used for reading the protocol."""
-import server.comms_bytes as cb
+import common.comms_bytes as cb
 import struct
-from server.message import Message
+from common.message import Message
 
 
 class ProtocolReader:
@@ -26,7 +26,9 @@ class ProtocolReader:
 
     def state_idle(self):
         """Waiting for a message to start."""
-        if self.connection.read(1) == cb.START:
+        c = self.connection.read(1)
+        # print("Idle... got %s" % c)
+        if c == bytes([cb.START]):
             self.state = self.state_get_message
         else:
             pass
@@ -37,9 +39,18 @@ class ProtocolReader:
 
         If checksum is OK, add message to inbound message queue.
         """
-        DL = struct.unpack(">L", self.connection.read(4))
-        buf = [DL] + self.connection.read(DL)
+        c = self.connection.read(1)
+        if c != b"~":
+            buf = c
+        else:
+            buf = self.connection.read(1)
+        buf += self.connection.read(3)
+        ##print("buf is %s" % buf)
+        DL = struct.unpack(">L", buf)[0]
+        #print("DL is %s" % DL)
+        buf = buf + self.connection.read(DL)
         buf = self.unescape_buffer(buf)
+        #print(buf)
         msg = Message(buf)
         if msg.verify():
             self.in_queue.put(msg)

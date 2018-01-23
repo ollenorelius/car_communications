@@ -1,5 +1,5 @@
 import struct
-import server.comms_bytes as cb
+import common.comms_bytes as cb
 import random
 
 def get_id_generator():
@@ -33,15 +33,38 @@ class Message():
             self.ID = next(id_generator)
             return 0
         else:
-            buf = self.unescape_buffer(buf)
-            self.DL = struct.unpack(">L", buf[0:4])[0]
-            self.ID = struct.unpack(">H", buf[4:6])[0]
-            self.reply_to = struct.unpack(">H", buf[6:8])[0]
-            self.time = struct.unpack(">L", buf[8:12])[0]
-            self.group = struct.unpack(">B", bytes([buf[12]]))[0]
-            self.command = struct.unpack(">B", bytes([buf[13]]))[0]
-            self.data = bytes(buf[14:-1])
-            self.chk = struct.unpack(">B", bytes([buf[-1]]))[0]
+            try:
+                buf = self.unescape_buffer(buf)
+                self.group = struct.unpack(">B", bytes([buf[0]]))[0]
+                self.command = struct.unpack(">B", bytes([buf[1]]))[0]
+                self.data = bytes(buf[2:-1])
+                self.chk = struct.unpack(">B", bytes([buf[-1]]))[0]
+            except IndexError:
+                self.DL = 0
+                self.group = 0
+                self.command = 0
+                self.data = 0
+                self.chk = 8
+    def get_zmq_msg(self):
+        ret = b''
+        ret = b''.join([ret, struct.pack(">c", bytes([self.group]))])
+        ret = b''.join([ret, struct.pack(">c", bytes([self.command]))])
+        ret = b''.join([ret, bytes(self.data)])
+        ret = b''.join([ret, struct.pack(">c", bytes([self.get_checksum()]))])
+        return self.escape_buffer(ret)
+
+    def get_serial_msg(self):
+
+        ret = b''
+        ret = b''.join([ret, struct.pack(">c", bytes([self.group]))])
+        ret = b''.join([ret, struct.pack(">c", bytes([self.command]))])
+        ret = b''.join([ret, bytes(self.data)])
+        ret = b''.join([ret, struct.pack(">c", bytes([self.get_checksum()]))])
+        ret = self.escape_buffer(ret)
+
+        DL = struct.pack(">L", len(ret))
+        ret = b''.join([bytes([cb.START]), DL, ret, bytes([cb.END])])
+        return ret
 
     def get_bytestring(self):
         """Get bytestring representing this message."""
@@ -57,7 +80,7 @@ class Message():
         return self.escape_buffer(ret)
 
     def get_network_message(self):
-        """Get complete message to send over TCP socket."""
+        """Get complete message to send over serial socket."""
         msg = b''
         msg = b''.join([msg, bytes([cb.START])])
         msg = b''.join([msg, self.get_bytestring()])
@@ -69,9 +92,6 @@ class Message():
         chksum = 0
         ret = b''
         ret = b''.join([ret, struct.pack(">L", self.DL)])
-        ret = b''.join([ret, struct.pack(">H", self.ID)])
-        ret = b''.join([ret, struct.pack(">H", self.reply_to)])
-        ret = b''.join([ret, struct.pack(">L", self.time)])
         ret = b''.join([ret, struct.pack(">c", bytes([self.group]))])
         ret = b''.join([ret, struct.pack(">c", bytes([self.command]))])
         ret = b''.join([ret, bytes(self.data)])
@@ -81,10 +101,20 @@ class Message():
 
     def verify(self):
         """Verify checksum of this message."""
-        if self.chk == self.get_checksum():
+        if self.chk == self.get_checksum() or self.chk == 255:
             return True
         else:
+            print("got invalid message: got chk %s, calc %s" % (self.chk, self.get_checksum()))
             return False
+
+    def calc_DL_serial(self):
+        """
+        Get the length of this message.
+
+        This is calculated without the 4 bytes of the data length field itself.
+        """
+        self.DL = len(self.data) + 3
+        return self.DL
 
     def calc_DL(self):
         """
@@ -145,7 +175,8 @@ def pack_lidar(buf):
 class Heartbeat(Message):
     def __init__(self):
         Message.__init__(self)
-        self.group = cb.HEARTBEAT
+        self.group = cb.CMD_STATUS
+        self.command = cb.HEARTBEAT
         self.finish()
 
 
@@ -193,6 +224,7 @@ class RequestPicture(Message):
         self.finish()
 
 
+
 class RequestLidar(Message):
     def __init__(self, id):
         Message.__init__(self)
@@ -203,18 +235,59 @@ class RequestLidar(Message):
 
 
 class LidarMessage(Message):
-    def __init__(self, data):
+    def __init__(self, input_data):
         Message.__init__(self)
         self.group = cb.SENS
         self.command = cb.SENS_LIDAR
-        self.data = pack_char(identifier)
+        self.data = b''
+        for d in input_data:
+            try:
+                self.data += struct.pack(">BHH", d[0], d[1], d[2])
+            except struct.error:
+                print("Tried to pack invalid data: %s" % str(d))
         self.finish()
 
+    def decode_lidar_chunk(self, chunk):
+        """Map a chunk of lidar data into (quality, distance, angle)."""
+        #print("decoding chunk: %s" % chunk)
+        return struct.unpack(">BHH", chunk)
+
+    def lidar_chunks(self):
+        """Generator for getting lidar data one point at a time."""
+        lidar_chunk_size = 5
+        for i in range(0, len(self.data), lidar_chunk_size):
+            yield self.data[i:i + lidar_chunk_size]
+
+    def get_zmq_msg(self):
+        ret = "lidar "
+        lidardata = map(self.decode_lidar_chunk,
+                        self.lidar_chunks())
+        for d in lidardata:
+            ret += "%s %s %s " % d
+        return ret
 
 class ImageMessage(Message):
     def __init__(self, image):
         Message.__init__(self)
         self.group = cb.SENS
         self.command = cb.SENS_PIC
-        self.data = pack_char(identifier)
+        self.data = image
+        self.finish()
+
+    def get_zmq_msg(self):
+        ret = b"image " + self.data
+        return ret
+
+class ArmMotorsMessage(Message):
+    def __init__(self):
+        Message.__init__(self)
+        self.group = cb.CMD_SET_PARAMS
+        self.command = cb.ARM_MOTORS
+        self.finish()
+
+class DisarmMotorsMessage(Message):
+    def __init__(self):
+        Message.__init__(self)
+        self.group = cb.CMD_SET_PARAMS
+        self.command = cb.DISARM_MOTORS
         self.finish()

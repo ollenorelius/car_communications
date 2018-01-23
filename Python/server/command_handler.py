@@ -1,12 +1,12 @@
 """A class for parsing ad reacting to inbound network messages."""
 import struct
-import server.comms_bytes as cb
+import common.comms_bytes as cb
 from queue import Queue
 import threading
 import io
 import time
 from server.protocol_reader import ProtocolReader
-import server.message as msg
+import common.message as msg
 
 
 class CommandHandler:

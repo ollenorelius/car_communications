@@ -3,7 +3,6 @@
 import socket
 import io
 try:
-    import picamera
     from server.car_handler import CarHandler
 except ImportError:
     print("This should be run on the Raspberry Pi!")
@@ -13,6 +12,10 @@ import queue
 from queue import Queue
 from server.protocol_reader import ProtocolReader
 from server.command_handler import CommandHandler
+import common.message as msg
+import common.comms_bytes as cb
+
+import zmq
 
 
 def time_op(start, name):
@@ -22,80 +25,59 @@ def time_op(start, name):
         print('Time taken for %s: %s' % (name, tt))
     return time.time()
 
+def publisher_thread(car, socket):
+    last_lidar_packet = 0
+    last_picture = 0
+    while True:
+        if car.has_image and time.time() - last_picture > 0.05:
+            #im_msg = msg.ImageMessage(car.image)
+            socket.send(b"image " + car.image)
+            car.has_image = False
+            last_picture = time.time()
 
-def network_thread(inbound_socket):
+        if time.time() - last_lidar_packet > 1.1:
+            socket.send_string(msg.LidarMessage(list(car.lidar_buffer)).get_zmq_msg())
+            last_lidar_packet = time.time()
+        time.sleep(0.05)
+
+
+
+
+def network_thread(socket, car):
     """Client handler thread."""
-    client_connection = inbound_socket.makefile('rwb')
-    global connection_up
-    connection_up = True
-    inbound_queue = Queue()
-    outbound_queue = Queue()
-    pr = ProtocolReader(client_connection, inbound_queue)
-    ch = CommandHandler(car, inbound_queue, outbound_queue)
+    while True:
+        inbound = msg.Message(socket.recv())
+        if inbound.group not in [16, 1]:
+            print("Got group %s, command %s, data %s" % (inbound.group,
+                                                         inbound.command,
+                                                         inbound.data))
+        car.send_message(inbound)
+        socket.send(msg.OK(0).get_zmq_msg())
 
-    def inbound():
-        global connection_up
-        try:
-            while connection_up:
-                pr.run()
-            print("Inbound thread closed due to connection_up flag!")
-        except ConnectionResetError:
-            connection_up = False
-            print("Inbound thread closed due to ConnectionResetError!")
 
-    def process():
-        global connection_up
-        while connection_up:
-            ch.handle_message()
-
-    def outbound():
-        global connection_up
-        while connection_up:
-            try:
-                message = outbound_queue.get(timeout=1)
-                msg_bytes = message.get_network_message()
-                client_connection.write(msg_bytes)
-            except queue.Empty:
-                pass
-        print("Outbound thread closed!")
-
-    threading.Thread(target=inbound, daemon=True).start()
-    threading.Thread(target=outbound, daemon=True).start()
-    while connection_up:
-        pass
-    ch.stop_car()
 
 
 def run_server():
-    inbound_socket = socket.socket()
-    inbound_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    inbound_socket.bind(('0.0.0.0', 8000))
-    inbound_socket.listen(0)
+    image = b''
+    car = CarHandler(serial_port='/dev/ttyAMA0', baudrate=2000000)
 
-    try:
-        threading.Thread(target=camera_thread, daemon=True).start()
-    except picamera.exc.PiCameraMMALError:
-        print("Could not init camera!")
-    except picamera.exc.PiCameraError:
-        print("Could not init camera! Make sure it is plugged in right, and then run sudo raspi-config")
+    server_context = zmq.Context()
 
+    publish_socket = server_context.socket(zmq.PUB)
+    publish_socket.setsockopt(zmq.SNDHWM, 1)
+    publish_socket.setsockopt(zmq.SNDBUF, 2048)
+    publish_socket.bind("tcp://*:5556")
+
+    command_socket = server_context.socket(zmq.REP)
+    command_socket.bind("tcp://*:5555")
+
+    threading.Thread(target=publisher_thread, args=[car, publish_socket], daemon=True).start()
+    threading.Thread(target=network_thread, args=[command_socket, car], daemon=False).start()
     print("Car server online, awaiting connections")
 
-    while True:
-        global connection_up
-
-        connection, addr = inbound_socket.accept()
-        connection_up = False
-        time.sleep(1)
-        connection_up = True
-        threading.Thread(target=network_thread, args=[connection]).start()
-        print(connection)
 
 
-image = b''
-car = CarHandler()
-image_lock = threading.RLock()
-connection_lock = threading.RLock()
+
 
 timing = False
 
