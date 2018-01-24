@@ -145,9 +145,9 @@ class CarHandler(VehicleHandler):
 
     def handle_inbound(self):
         """Specific serial command handler for Infotiv Car."""
+        t = 0
         while True:
             message = self.inbound_serial_queue.get()
-
             if message.group == cb.SENS:
                 if message.command == cb.SENS_LIDAR:
                     if len(message.data) % 5 != 0:
@@ -170,19 +170,21 @@ class CarHandler(VehicleHandler):
 
             elif message.group == cb.CMD_STATUS:
                 if message.command == cb.HEARTBEAT:
-                    #print("Got HB from DK")
-                    min_dist = 100000
-                    ang = -1
-                    for d in self.lidar_buffer:
-                        if d[1] < min_dist and d[0] > 1:
-                            min_dist = d[1]
-                            ang = d[2]
-                    #print("Closest point to robot is %s mm away at angle %s" % (min_dist/4, ang/64))
+                    pass
                 if message.command == cb.HANDSHAKE:
                     pass
                 if message.command == cb.ASK_STATUS:
                     pass
 
+            if time.time() - t > 1:
+                t = time.time()
+                min_dist = 100000
+                ang = -1
+                for d in self.lidar_buffer:
+                    if d[1] < min_dist and d[0] > 1:
+                        min_dist = d[1]
+                        ang = d[2]
+                print("Closest point to robot is %s mm away at angle %s" % (min_dist/4, ang/64))
 
     def decode_lidar_chunk(self, chunk):
         """Map a chunk of lidar data into (quality, distance, angle)."""

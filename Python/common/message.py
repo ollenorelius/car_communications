@@ -27,18 +27,24 @@ class Message():
     data = b''
     chk = 0
 
-    def __init__(self, buf=[]):
+    def __init__(self, buf=[], source="zmq"):
         """Create a message from contents of buf."""
         if buf == []:
             self.ID = next(id_generator)
             return 0
         else:
             try:
-                buf = self.unescape_buffer(buf)
-                self.group = struct.unpack(">B", bytes([buf[0]]))[0]
-                self.command = struct.unpack(">B", bytes([buf[1]]))[0]
-                self.data = bytes(buf[2:-1])
-                self.chk = struct.unpack(">B", bytes([buf[-1]]))[0]
+                if source == "zmq":
+                    buf = self.unescape_buffer(buf)
+                    self.group = struct.unpack(">B", bytes([buf[0]]))[0]
+                    self.command = struct.unpack(">B", bytes([buf[1]]))[0]
+                    self.data = bytes(buf[2:-1])
+                    self.chk = struct.unpack(">B", bytes([buf[-1]]))[0]
+                elif source == "serial":
+                    self.group = struct.unpack(">B", bytes([buf[4]]))[0]
+                    self.command = struct.unpack(">B", bytes([buf[5]]))[0]
+                    self.data = bytes(buf[6:-1])
+                    self.chk = struct.unpack(">B", bytes([buf[-1]]))[0]
             except IndexError:
                 self.DL = 0
                 self.group = 0

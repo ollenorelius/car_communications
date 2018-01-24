@@ -51,7 +51,7 @@ class ProtocolReader:
         buf = buf + self.connection.read(DL)
         buf = self.unescape_buffer(buf)
         #print(buf)
-        msg = Message(buf)
+        msg = Message(buf,source="serial")
         if msg.verify():
             self.in_queue.put(msg)
             self.state = self.state_get_ending

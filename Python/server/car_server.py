@@ -35,7 +35,7 @@ def publisher_thread(car, socket):
             car.has_image = False
             last_picture = time.time()
 
-        if time.time() - last_lidar_packet > 1.1:
+        if time.time() - last_lidar_packet > 0.1:
             socket.send_string(msg.LidarMessage(list(car.lidar_buffer)).get_zmq_msg())
             last_lidar_packet = time.time()
         time.sleep(0.05)

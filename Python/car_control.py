@@ -77,7 +77,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         }
 
         self.key_arguments = {
-            QtCore.Qt.Key_W: 450,
+            QtCore.Qt.Key_W: 550,
             QtCore.Qt.Key_S: -350,
             QtCore.Qt.Key_A: 250,
             QtCore.Qt.Key_D: -250,
