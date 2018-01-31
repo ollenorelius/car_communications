@@ -13,11 +13,18 @@ import zmq
 from queue import Queue
 import numpy as np
 
+def conf_sub(socket, filter_bytes):
+    socket.setsockopt(zmq.RCVHWM, 1)
+    socket.setsockopt(zmq.SUBSCRIBE, filter_bytes)
+    socket.connect("tcp://autonomous-platform.local:5556")
 class CarController:
     context = zmq.Context()
 
     lidar_socket = context.socket(zmq.SUB)
+    sonar_socket = context.socket(zmq.SUB)
+    speed_socket = context.socket(zmq.SUB)
     image_socket = context.socket(zmq.SUB)
+
     command_socket = context.socket(zmq.REQ)
     outbound_queue = Queue()
     image_stream = io.BytesIO()
@@ -30,17 +37,13 @@ class CarController:
 
     def __init__(self, address='autopi.local', port=8000):
 
-        self.lidar_socket.setsockopt(zmq.RCVHWM, 1)
-        self.image_socket.setsockopt(zmq.RCVHWM, 1)
+        conf_sub(self.lidar_socket, bytes([cb.SENS, cb.SENS_LIDAR]))
+        conf_sub(self.image_socket, bytes([cb.SENS, cb.SENS_PIC]))
+        print(bytes([cb.SENS, cb.SENS_PIC]))
+        conf_sub(self.sonar_socket, b"sonar")
         self.command_socket.setsockopt(zmq.RCVHWM, 1)
         self.command_socket.setsockopt(zmq.SNDHWM, 1)
-        lidar_filter = "lidar"
 
-        self.lidar_socket.setsockopt_string(zmq.SUBSCRIBE, lidar_filter)
-        self.image_socket.setsockopt(zmq.SUBSCRIBE, b"image")
-
-        self.lidar_socket.connect("tcp://autonomous-platform.local:5556")
-        self.image_socket.connect("tcp://autonomous-platform.local:5556")
         self.command_socket.connect("tcp://autonomous-platform.local:5555")
 
         self.data = {"camera": self.get_picture,
@@ -53,7 +56,7 @@ class CarController:
 
     def get_picture(self, camera_id=0):
 
-        img_bytes = self.image_socket.recv()[6:]
+        img_bytes = self.image_socket.recv()[2:]
         try:
             temp_image = Image.open(io.BytesIO(img_bytes))
         except OSError:
@@ -62,15 +65,27 @@ class CarController:
         return temp_image
 
     def get_lidar(self, lidarID=0):
-        string = self.lidar_socket.recv()
-        data = [int(x) for x in string.split()[1:]]
-        print(data)
-        data = np.reshape(data, (-1, 3))
+        string = self.lidar_socket.recv()[2:]
+        points = map(self.decode_lidar_chunk, self.lidar_chunks(string))
+        data = np.array(list(points))*[1, 1/4, 1/64*np.pi/180]
         return data
+
+    def decode_lidar_chunk(self, chunk):
+        """Map a chunk of lidar data into (quality, distance, angle)."""
+        #print("decoding chunk: %s" % chunk)
+        return struct.unpack(">BHH", chunk)
+
+    def lidar_chunks(self, data):
+        """Generator for getting lidar data one point at a time."""
+        lidar_chunk_size = 5
+        for i in range(0, len(data), lidar_chunk_size):
+            yield data[i:i + lidar_chunk_size]
 
     def get_speed(self):
         pass
 
+    def get_sonar(id):
+        pass
     def flush_messages(self):
         while True:
             self.command_socket.send(self.outbound_queue.get().get_zmq_msg())

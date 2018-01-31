@@ -31,12 +31,14 @@ def publisher_thread(car, socket):
     while True:
         if car.has_image and time.time() - last_picture > 0.05:
             #im_msg = msg.ImageMessage(car.image)
-            socket.send(b"image " + car.image)
+            # Ideally I want to do the above, but it copies too much data,
+            # so it slows the transfer down too much.
+            socket.send(bytes([cb.SENS, cb.SENS_PIC]) + car.image)
             car.has_image = False
             last_picture = time.time()
 
         if time.time() - last_lidar_packet > 0.1:
-            socket.send_string(msg.LidarMessage(list(car.lidar_buffer)).get_zmq_msg())
+            socket.send(msg.LidarMessage(list(car.lidar_buffer)).get_zmq_msg())
             last_lidar_packet = time.time()
         time.sleep(0.05)
 
