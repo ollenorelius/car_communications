@@ -10,7 +10,7 @@ import io
 from PIL import Image
 from autonomous.car_controller import CarController
 
-car = CarController(address='autonomous-platform.local', port=8000)
+car = CarController(address='192.168.150.149')
 N = 150
 r = 2 * np.random.rand(N)
 theta = 2 * np.pi * np.random.rand(N)

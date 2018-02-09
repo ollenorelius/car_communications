@@ -13,10 +13,10 @@ import zmq
 from queue import Queue
 import numpy as np
 
-def conf_sub(socket, filter_bytes):
+def conf_sub(socket, filter_bytes, address):
     socket.setsockopt(zmq.RCVHWM, 1)
     socket.setsockopt(zmq.SUBSCRIBE, filter_bytes)
-    socket.connect("tcp://autonomous-platform.local:5556")
+    socket.connect(address)
 class CarController:
     context = zmq.Context()
 
@@ -35,23 +35,25 @@ class CarController:
     pr = ProtocolReader()
 
 
-    def __init__(self, address='autopi.local', port=8000):
+    def __init__(self, address='192.168.150.133'):
 
-        conf_sub(self.lidar_socket, bytes([cb.SENS, cb.SENS_LIDAR]))
-        conf_sub(self.image_socket, bytes([cb.SENS, cb.SENS_PIC]))
+        cmd_address = "tcp://"+address+":5555"
+        data_address = "tcp://"+address+":5556"
+        conf_sub(self.lidar_socket, bytes([cb.SENS, cb.SENS_LIDAR]), data_address)
+        conf_sub(self.image_socket, bytes([cb.SENS, cb.SENS_PIC]), data_address)
         print(bytes([cb.SENS, cb.SENS_PIC]))
-        conf_sub(self.sonar_socket, b"sonar")
+        conf_sub(self.sonar_socket, b"sonar", data_address)
         self.command_socket.setsockopt(zmq.RCVHWM, 1)
         self.command_socket.setsockopt(zmq.SNDHWM, 1)
 
-        self.command_socket.connect("tcp://autonomous-platform.local:5555")
+        self.command_socket.connect(cmd_address)
 
         self.data = {"camera": self.get_picture,
                 "lidar": self.get_lidar,
                 "speed": self.get_speed}
-        print("Car controller init OK!")
         threading.Thread(target=self.heartbeat_thread, daemon=True).start()
         threading.Thread(target=self.flush_messages, daemon=True).start()
+        print("Car controller init OK!")
 
 
     def get_picture(self, camera_id=0):
@@ -86,6 +88,7 @@ class CarController:
 
     def get_sonar(id):
         pass
+
     def flush_messages(self):
         while True:
             self.command_socket.send(self.outbound_queue.get().get_zmq_msg())
