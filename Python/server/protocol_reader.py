@@ -1,17 +1,21 @@
 """Contains class used for reading the protocol."""
-import server.comms_bytes as cb
+import common.comms_bytes as cb
 import struct
+from common.message import Message
 
 
 class ProtocolReader:
-    """Buffer for messages arriving from network socket."""
+    """Buffer for messages arriving from connection.
+
+    Used both for socket and serial."""
 
     buf = b''
-    active_message = False
-    next_char_escaped = False
-    message_in_buffer = False
-    next_symbol_length = 1
-    incoming_data_length = False
+
+    def __init__(self, connection, in_queue):
+        """Create a new protocol_reader reading connection into in_queue."""
+        self.connection = connection
+        self.state = self.state_idle
+        self.in_queue = in_queue
 
     def emptyBuffer(self):
         """Small wrapper to make code clearer."""
@@ -20,64 +24,55 @@ class ProtocolReader:
         self.message_in_buffer = False
         self.next_symbol_length = 1
 
-    def readBytes(self, input_bytes):
+    def state_idle(self):
+        """Waiting for a message to start."""
+        c = self.connection.read(1)
+        # print("Idle... got %s" % c)
+        if c == bytes([cb.START]):
+            self.state = self.state_get_message
+        else:
+            pass
+
+    def state_get_message(self):
         """
-        Handle a byte package incoming.
+        Get message body.
 
-        input_bytes is a byte string, representing one symbol. A symbol may be
-        a start or end byte  or a data packet.
+        If checksum is OK, add message to inbound message queue.
         """
-        """if input_bytes not in [b'', b'\x00']:
-            print("active_message: "
-                  + str(self.active_message)
-                  + " " + str(input_bytes))"""
-        if len(input_bytes) == 1:
-            if int.from_bytes(input_bytes, 'big') == cb.START and \
-                    self.active_message is False:
-                self.emptyBuffer()
-                self.active_message = True
-                self.next_symbol_length = 4
-                self.incoming_data_length = True
-                return 1
+        c = self.connection.read(1)
+        if c != b"~":
+            buf = c
+        else:
+            buf = self.connection.read(1)
+        buf += self.connection.read(3)
+        ##print("buf is %s" % buf)
+        DL = struct.unpack(">L", buf)[0]
+        #print("DL is %s" % DL)
+        buf = buf + self.connection.read(DL)
+        buf = self.unescape_buffer(buf)
+        #print(buf)
+        msg = Message(buf,source="serial")
+        if msg.verify():
+            self.in_queue.put(msg)
+            self.state = self.state_get_ending
+        else:
+            self.state = self.state_idle
 
-            if int.from_bytes(input_bytes, 'big') == cb.END \
-                    and self.active_message is True:
-                self.message_in_buffer = True
-                self.active_message = False
-                self.next_symbol_length = 1
-                return 1
+    def state_get_ending(self):
+        """
+        Get the ending byte of the message.
 
-        if self.incoming_data_length:
-            self.next_symbol_length = struct.unpack('>L', input_bytes)[0]
-            self.incoming_data_length = False
-            return 1
+        This currently does nothing, since the message ending is defined by
+        the DL field of the header.
+        """
+        if self.connection.read(1) == cb.END:
+            self.state = self.state_idle
+        else:
+            self.state = self.state_idle
 
-        if self.active_message:
-            self.buf += input_bytes
-            self.next_symbol_length = 1
-
-    def create_message(self, group, command, data, chk=None):
-        """Create a message from commands and data."""
-        msg = bytes({group})
-        if command is not None:
-            msg += bytes({command})
-        if chk is None:
-            if data is not None:
-                chk = self.checksum(msg + data)
-            else:
-                chk = self.checksum(msg)
-        msg += chk
-        if data is not None:
-            msg += data
-        escaped = self.escape_buffer(msg)
-        return struct.pack('>L', len(escaped)) + escaped
-
-    def checksum(self, buf):
-        """Create a simple checksum by XORing all the bytes in the message."""
-        chksum = 0
-        for byte in buf:
-            chksum ^= byte
-        return bytes({chksum})
+    def run(self):
+        """Run currently active state."""
+        self.state()
 
     def escape_buffer(self, buf):
         """Escape start, end and escape bytes in original message."""

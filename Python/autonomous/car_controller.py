@@ -5,53 +5,96 @@ import threading
 import time
 import io
 import struct
-import autonomous.comms_bytes as cb
+import common.comms_bytes as cb
+import common.message as msg
 from autonomous.protocol_reader import ProtocolReader
 from PIL import Image, ImageQt, ImageDraw, ImageFont, ImageOps
+import zmq
+from queue import Queue
+import numpy as np
 
+def conf_sub(socket, filter_bytes, address):
+    socket.setsockopt(zmq.RCVHWM, 1)
+    socket.setsockopt(zmq.SUBSCRIBE, filter_bytes)
+    socket.connect(address)
 class CarController:
-    RC_socket = socket.socket()
+    context = zmq.Context()
+
+    lidar_socket = context.socket(zmq.SUB)
+    sonar_socket = context.socket(zmq.SUB)
+    speed_socket = context.socket(zmq.SUB)
+    image_socket = context.socket(zmq.SUB)
+
+    command_socket = context.socket(zmq.REQ)
+    outbound_queue = Queue()
     image_stream = io.BytesIO()
     RC_connection_lock = threading.RLock()
     message_lock = threading.RLock()
 
+
     pr = ProtocolReader()
 
 
-    def __init__(self, address='autopi.local', port=8000):
-        self.RC_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.RC_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.RC_socket.settimeout(100)
-        self.RC_socket.connect((address, port))
-        self.RC_connection = self.RC_socket.makefile('rwb')
+    def __init__(self, address='192.168.150.133'):
+
+        cmd_address = "tcp://"+address+":5555"
+        data_address = "tcp://"+address+":5556"
+        conf_sub(self.lidar_socket, bytes([cb.SENS, cb.SENS_LIDAR]), data_address)
+        conf_sub(self.image_socket, bytes([cb.SENS, cb.SENS_PIC]), data_address)
+        print(bytes([cb.SENS, cb.SENS_PIC]))
+        conf_sub(self.sonar_socket, b"sonar", data_address)
+        self.command_socket.setsockopt(zmq.RCVHWM, 1)
+        self.command_socket.setsockopt(zmq.SNDHWM, 1)
+
+        self.command_socket.connect(cmd_address)
+
+        self.data = {"camera": self.get_picture,
+                "lidar": self.get_lidar,
+                "speed": self.get_speed}
         threading.Thread(target=self.heartbeat_thread, daemon=True).start()
+        threading.Thread(target=self.flush_messages, daemon=True).start()
         print("Car controller init OK!")
 
-    def get_picture(self, camera_id):
-        with self.message_lock:
-            #print("sending pic rq")
-            reply = self.send_message(cb.REQ_SENS,
-                                      cb.REQ_PIC,
-                                      struct.pack('>B', camera_id))
-            #print("get_picture got reply: " + str(reply[0:20]))
-            if reply[0] == cb.R_OK_IMAGE_FOLLOWS:
-                #print("receiving picture!")
 
-                self.image_stream.seek(0)
-                self.image_stream.truncate()
-                self.image_stream.write(reply[2:])
-                #print("escaped picture is %s" % len(self.image_stream))
-                img_bytes = self.image_stream.getvalue()
-                #print("deescaped picture is %s" % len(img_bytes))
-                try:
-                    temp_image = Image.open(io.BytesIO(img_bytes))
-                except OSError:
-                    print("Received invalid image! Len: len(%s)" % len(img_bytes))
-                    return None
-                return temp_image
+    def get_picture(self, camera_id=0):
 
+        img_bytes = self.image_socket.recv()[2:]
+        try:
+            temp_image = Image.open(io.BytesIO(img_bytes))
+        except OSError:
+            print("Received invalid image! Len: len(%s)" % len(img_bytes))
+            return None
+        return temp_image
 
-    def send_message(self, group, command, data=[]):
+    def get_lidar(self, lidarID=0):
+        string = self.lidar_socket.recv()[2:]
+        points = map(self.decode_lidar_chunk, self.lidar_chunks(string))
+        data = np.array(list(points))*[1, 1/4, 1/64*np.pi/180]
+        return data
+
+    def decode_lidar_chunk(self, chunk):
+        """Map a chunk of lidar data into (quality, distance, angle)."""
+        #print("decoding chunk: %s" % chunk)
+        return struct.unpack(">BHH", chunk)
+
+    def lidar_chunks(self, data):
+        """Generator for getting lidar data one point at a time."""
+        lidar_chunk_size = 5
+        for i in range(0, len(data), lidar_chunk_size):
+            yield data[i:i + lidar_chunk_size]
+
+    def get_speed(self):
+        pass
+
+    def get_sonar(id):
+        pass
+
+    def flush_messages(self):
+        while True:
+            self.command_socket.send(self.outbound_queue.get().get_zmq_msg())
+            reply = msg.Message(self.command_socket.recv())
+
+    def send_message(self, message):
         """
         Send a message to the Raspberry Pi.
 
@@ -66,24 +109,7 @@ class CarController:
 
         Returns the reply received from the Raspberry Pi as a byte array.
         """
-        with self.message_lock:
-            with self.RC_connection_lock:
-                self.RC_connection.write(struct.pack('>B', cb.START))
-                self.RC_connection.write(struct.pack('>L', 2+len(data)))
-                self.RC_connection.write(struct.pack('>B', group))
-                self.RC_connection.write(struct.pack('>B', command))
-                if data != []:
-                    if len(data) > 1:
-                        for d in data:
-                            print(bytes([d]))
-                            self.RC_connection.write(bytes([d]))
-                    else:
-                        self.RC_connection.write(data)
-                self.RC_connection.write(struct.pack('>B', cb.END))
-                self.RC_connection.flush()
-            reply = self.recv_message()
-        #print("reply in send_message: " + str(reply))
-        return reply
+        self.outbound_queue.put(message)
 
     def recv_message(self):
         """Read an incoming message from Raspberry Pi."""
@@ -105,16 +131,21 @@ class CarController:
             self.pr.message_in_buffer = False
             return False
 
+    def arm_motors(self):
+        self.send_message(message=msg.ArmMotorsMessage())
+
+    def disarm_motors(self):
+        self.send_message(message=msg.DisarmMotorsMessage())
+
     def set_speed(self, speed):
-        self.send_message(cb.CMD_SPEED, cb.CAR_SPD, struct.pack('>h', speed))
-        print(struct.pack('>h', speed))
+        self.send_message(message=msg.SetSpeed(speed))
+        # print(struct.pack('>h', speed))
 
     def set_turnrate(self, rate):
-        self.send_message(cb.CMD_SPEED, cb.TURN_SPD, struct.pack('>h', rate))
+        self.send_message(message=msg.SetTurnRate(rate))
 
     def heartbeat_thread(self):
         """Thread method for sending regular heartbeat."""
         while True:
-            reply = self.send_message(group=cb.CMD_STATUS,
-                                      command=cb.HEARTBEAT)
+            reply = self.send_message(msg.Heartbeat())
             time.sleep(0.5)

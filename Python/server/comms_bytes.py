@@ -34,13 +34,25 @@ REQ_COMPASS = 0x01
 REQ_ACC = 0x02
 REQ_GYRO = 0x03
 REQ_PIC = 0x04  # int8 cameraID
+REQ_LIDAR = 0x05  # int8 lidarID
+
+SENS = 0x30
+SENS_LIDAR = 0x01  # int8 quality, int16 angle, int16 distance
+SENS_ACC = 0x02  # int16 X, int16 Y, int16 Z
+SENS_GYRO = 0x03  # int16 X, int16 Y, int16 Z
+SENS_COMPASS = 0x04  # int16 heading
+SENS_PIC = 0x06
+SENS_SPEED = 0x05  # int16 speed, int16 turn
+SENS_WHEEL = 0x07  # int16 FR, FL, RR, RL
+SENS_TORQUE = 0x08  # int16 FR, FL, RR, RL
+
 
 
 # Responses
-R_OK = 0x10
+R_OK = 0xA0
 R_OK_IMAGE_FOLLOWS = 0x11
 
-R_ERR = 0x20  # general error
+R_ERR = 0xB0  # general error
 R_VAL_OOR = 0x21  # Out of range
 R_FUNC_NA = 0x22  # Function not available
 R_MAL_REQ = 0x23  # Malformed request
