@@ -44,7 +44,6 @@ def publisher_thread(car, socket):
             last_lidar_packet = time.time()
 
         if time.time() - last_speed_packet > 0.1:
-            print(msg.WheelSpeedMessage(car.current_wheel_speeds).get_zmq_msg())
             socket.send(msg.WheelSpeedMessage(car.current_wheel_speeds).get_zmq_msg())
             last_speed_packet = time.time()
         time.sleep(0.05)

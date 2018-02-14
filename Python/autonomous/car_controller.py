@@ -86,7 +86,6 @@ class CarController:
 
     def get_wheel_speeds(self):
         string = self.speed_socket.recv()[2:]
-        print(string)
         string = self.pr.unescape_buffer(string)
         return struct.unpack(">hhhh", string[:8])
 
