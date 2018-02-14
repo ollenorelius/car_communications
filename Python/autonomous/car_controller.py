@@ -41,6 +41,7 @@ class CarController:
         data_address = "tcp://"+address+":5556"
         conf_sub(self.lidar_socket, bytes([cb.SENS, cb.SENS_LIDAR]), data_address)
         conf_sub(self.image_socket, bytes([cb.SENS, cb.SENS_PIC]), data_address)
+        conf_sub(self.speed_socket, bytes([cb.SENS, cb.SENS_WHEEL]), data_address)
         print(bytes([cb.SENS, cb.SENS_PIC]))
         conf_sub(self.sonar_socket, b"sonar", data_address)
         self.command_socket.setsockopt(zmq.RCVHWM, 1)
@@ -50,7 +51,7 @@ class CarController:
 
         self.data = {"camera": self.get_picture,
                 "lidar": self.get_lidar,
-                "speed": self.get_speed}
+                "wheel_speed": self.get_wheel_speeds}
         threading.Thread(target=self.heartbeat_thread, daemon=True).start()
         threading.Thread(target=self.flush_messages, daemon=True).start()
         print("Car controller init OK!")
@@ -83,8 +84,11 @@ class CarController:
         for i in range(0, len(data), lidar_chunk_size):
             yield data[i:i + lidar_chunk_size]
 
-    def get_speed(self):
-        pass
+    def get_wheel_speeds(self):
+        string = self.speed_socket.recv()[2:]
+        print(string)
+        string = self.pr.unescape_buffer(string)
+        return struct.unpack(">hhhh", string[:8])
 
     def get_sonar(id):
         pass

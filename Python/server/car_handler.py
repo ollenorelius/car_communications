@@ -102,6 +102,7 @@ class CarHandler(VehicleHandler):
     lidar_buffer = deque(maxlen=400)
     current_speed = 0
     current_turn_rate = 0
+    current_wheel_speeds = [0, 0, 0, 0]
     has_image = False
 
     def __init__(self, serial_port='/dev/ttyAMA0', baudrate=2000000):

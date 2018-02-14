@@ -293,3 +293,11 @@ class DisarmMotorsMessage(Message):
         self.group = cb.CMD_SET_PARAMS
         self.command = cb.DISARM_MOTORS
         self.finish()
+
+class WheelSpeedMessage(Message):
+    def __init__(self, speeds):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_WHEEL
+        self.data = struct.pack('>hhhh', speeds[0], speeds[1], speeds[2], speeds[3])
+        self.finish()

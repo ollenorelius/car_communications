@@ -118,6 +118,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             #                self.cameraView.size().height())
             temp_image = temp_image.resize(self.picSize)
             image = temp_image
+            print(self.car.get_wheel_speeds())
             self.cameraView.setPixmap(
                         QtGui.QPixmap.fromImage(ImageQt.ImageQt(image)))
 
