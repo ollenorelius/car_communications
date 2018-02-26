@@ -103,6 +103,9 @@ class CarHandler(VehicleHandler):
     current_speed = 0
     current_turn_rate = 0
     current_wheel_speeds = [0, 0, 0, 0]
+    battery_voltage = 0
+    motor_current = 0
+
     has_image = False
 
     def __init__(self, serial_port='/dev/ttyAMA0', baudrate=2000000):
@@ -168,6 +171,10 @@ class CarHandler(VehicleHandler):
                 elif message.command == cb.SENS_WHEEL:
                     wheels = struct.unpack(">hhhh", message.data)
                     self.current_wheel_speeds = wheels
+                elif message.command == cb.SENS_P_BATT:
+                    data = struct.unpack(">hh", message.data)
+                    self.battery_voltage = data[0]
+                    self.motor_current = data[1]
 
             elif message.group == cb.CMD_STATUS:
                 if message.command == cb.HEARTBEAT:
@@ -186,6 +193,7 @@ class CarHandler(VehicleHandler):
                         min_dist = d[1]
                         ang = d[2]
                 print("Closest point to robot is %s mm away at angle %s" % (min_dist/4, ang/64))
+                print("Battery voltage: %s" % self.battery_voltage)
 
     def decode_lidar_chunk(self, chunk):
         """Map a chunk of lidar data into (quality, distance, angle)."""

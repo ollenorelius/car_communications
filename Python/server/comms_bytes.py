@@ -45,6 +45,7 @@ SENS_PIC = 0x06
 SENS_SPEED = 0x05  # int16 speed, int16 turn
 SENS_WHEEL = 0x07  # int16 FR, FL, RR, RL
 SENS_TORQUE = 0x08  # int16 FR, FL, RR, RL
+SENS_P_BATT = 0x09 # int16 mVolt, int16 mA
 
 
 

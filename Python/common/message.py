@@ -299,5 +299,17 @@ class WheelSpeedMessage(Message):
         Message.__init__(self)
         self.group = cb.SENS
         self.command = cb.SENS_WHEEL
-        self.data = struct.pack('>hhhh', speeds[0], speeds[1], speeds[2], speeds[3])
+        self.data = struct.pack('>hhhh',
+                                speeds[0],
+                                speeds[1],
+                                speeds[2],
+                                speeds[3])
+        self.finish()
+
+class PropBatteryMessage(Message):
+    def __init__(self, voltage, current):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_P_BATT
+        self.data = struct.pack('>hh', voltage, current)
         self.finish()

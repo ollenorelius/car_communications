@@ -24,6 +24,7 @@ class CarController:
     sonar_socket = context.socket(zmq.SUB)
     speed_socket = context.socket(zmq.SUB)
     image_socket = context.socket(zmq.SUB)
+    battery_socket = context.socket(zmq.SUB)
 
     command_socket = context.socket(zmq.REQ)
     outbound_queue = Queue()
@@ -42,6 +43,7 @@ class CarController:
         conf_sub(self.lidar_socket, bytes([cb.SENS, cb.SENS_LIDAR]), data_address)
         conf_sub(self.image_socket, bytes([cb.SENS, cb.SENS_PIC]), data_address)
         conf_sub(self.speed_socket, bytes([cb.SENS, cb.SENS_WHEEL]), data_address)
+        conf_sub(self.battery_socket, bytes([cb.SENS, cb.SENS_P_BATT]), data_address)
         print(bytes([cb.SENS, cb.SENS_PIC]))
         conf_sub(self.sonar_socket, b"sonar", data_address)
         self.command_socket.setsockopt(zmq.RCVHWM, 1)
@@ -89,8 +91,20 @@ class CarController:
         string = self.pr.unescape_buffer(string)
         return struct.unpack(">hhhh", string[:8])
 
-    def get_sonar(id):
+    def get_sonar(self, id):
         pass
+
+    def get_voltage(self):
+        string = self.battery_socket.recv()[2:]
+        string = self.pr.unescape_buffer(string)
+        v = struct.unpack(">hh", string[:4])[0]
+        return v
+
+    def get_current(self):
+        string = self.battery_socket.recv()[2:]
+        string = self.pr.unescape_buffer(string)
+        i = struct.unpack(">hh", string[:4])[1]
+        return i
 
     def flush_messages(self):
         while True:

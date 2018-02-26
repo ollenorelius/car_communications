@@ -101,7 +101,6 @@ class ProtocolReader:
 
         escaped = buf.replace(start_escaped, start_byte) \
             .replace(esc_escaped, esc_byte)
-        print("Result has length %s" % len(escaped))
         return escaped
 
     def get_buffer(self):
