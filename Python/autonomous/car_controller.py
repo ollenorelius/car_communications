@@ -5,9 +5,9 @@ import threading
 import time
 import io
 import struct
-import common.comms_bytes as cb
-import common.message as msg
-from autonomous.protocol_reader import ProtocolReader
+from ..common import comms_bytes as cb
+from ..common import message as msg
+from ..autonomous.protocol_reader import ProtocolReader
 from PIL import Image, ImageQt, ImageDraw, ImageFont, ImageOps
 import zmq
 from queue import Queue

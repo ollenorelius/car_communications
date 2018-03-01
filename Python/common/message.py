@@ -1,5 +1,5 @@
 import struct
-import common.comms_bytes as cb
+from ..common import comms_bytes as cb
 import random
 
 def get_id_generator():
