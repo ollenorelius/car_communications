@@ -2,3 +2,7 @@
 *.pyc
 
 Python/\.vscode/
+
+Python/dist/
+
+Python/build/
