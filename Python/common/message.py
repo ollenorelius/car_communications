@@ -313,3 +313,16 @@ class PropBatteryMessage(Message):
         self.command = cb.SENS_P_BATT
         self.data = struct.pack('>hh', voltage, current)
         self.finish()
+
+class LatestCmdMessage(Message):
+    def __init__(self, data):
+        Message.__init__(self)
+        self.group = cb.CMD_STATUS
+        self.command = cb.LATEST_CMD
+        if data is not None:
+            self.data = data
+        else:
+            self.data = b'1'
+        self.finish()
+
+        

@@ -194,6 +194,7 @@ class CarHandler(VehicleHandler):
                         ang = d[2]
                 print("Closest point to robot is %s mm away at angle %s" % (min_dist/4, ang/64))
                 print("Battery voltage: %s" % self.battery_voltage)
+                print("Wheel speeds: %s" % str(self.current_wheel_speeds))
 
     def decode_lidar_chunk(self, chunk):
         """Map a chunk of lidar data into (quality, distance, angle)."""

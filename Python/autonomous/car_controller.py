@@ -15,8 +15,10 @@ import numpy as np
 
 def conf_sub(socket, filter_bytes, address):
     socket.setsockopt(zmq.RCVHWM, 1)
+    socket.setsockopt(zmq.RCVTIMEO, 1000)
     socket.setsockopt(zmq.SUBSCRIBE, filter_bytes)
     socket.connect(address)
+
 class CarController:
     context = zmq.Context()
 
@@ -25,6 +27,7 @@ class CarController:
     speed_socket = context.socket(zmq.SUB)
     image_socket = context.socket(zmq.SUB)
     battery_socket = context.socket(zmq.SUB)
+    ltst_cmd_socket = context.socket(zmq.SUB)
 
     command_socket = context.socket(zmq.REQ)
     outbound_queue = Queue()
@@ -44,7 +47,7 @@ class CarController:
         conf_sub(self.image_socket, bytes([cb.SENS, cb.SENS_PIC]), data_address)
         conf_sub(self.speed_socket, bytes([cb.SENS, cb.SENS_WHEEL]), data_address)
         conf_sub(self.battery_socket, bytes([cb.SENS, cb.SENS_P_BATT]), data_address)
-        print(bytes([cb.SENS, cb.SENS_PIC]))
+        conf_sub(self.ltst_cmd_socket, bytes([cb.CMD_STATUS, cb.LATEST_CMD]), data_address)
         conf_sub(self.sonar_socket, b"sonar", data_address)
         self.command_socket.setsockopt(zmq.RCVHWM, 1)
         self.command_socket.setsockopt(zmq.SNDHWM, 1)
@@ -58,22 +61,34 @@ class CarController:
         threading.Thread(target=self.flush_messages, daemon=True).start()
         print("Car controller init OK!")
 
+    def _get_data_from_socket(self, socket):
+        try:
+            string = socket.recv()[2:]
+            return string
+        except zmq.error.Again:
+            return None
+        
 
     def get_picture(self, camera_id=0):
-
-        img_bytes = self.image_socket.recv()[2:]
+        img_bytes = self._get_data_from_socket(self.image_socket)
         try:
             temp_image = Image.open(io.BytesIO(img_bytes))
         except OSError:
-            print("Received invalid image! Len: len(%s)" % len(img_bytes))
+            if img_bytes is not None:
+                print("Received invalid image! Len: len(%s)" % len(img_bytes))
+            else:
+                print("Received None image")
             return None
         return temp_image
 
     def get_lidar(self, lidarID=0):
-        string = self.lidar_socket.recv()[2:]
-        points = map(self.decode_lidar_chunk, self.lidar_chunks(string))
-        data = np.array(list(points))*[1, 1/4, 1/64*np.pi/180]
-        return data
+        string = self._get_data_from_socket(self.lidar_socket)
+        if string is not None:
+            points = map(self.decode_lidar_chunk, self.lidar_chunks(string))
+            data = np.array(list(points))*[1, 1/4, 1/64*np.pi/180]
+            return data
+        else:
+            return None
 
     def decode_lidar_chunk(self, chunk):
         """Map a chunk of lidar data into (quality, distance, angle)."""
@@ -87,24 +102,40 @@ class CarController:
             yield data[i:i + lidar_chunk_size]
 
     def get_wheel_speeds(self):
-        string = self.speed_socket.recv()[2:]
-        string = self.pr.unescape_buffer(string)
-        return struct.unpack(">hhhh", string[:8])
+        string = self._get_data_from_socket(self.speed_socket)
+        if string is not None:
+            string = self.pr.unescape_buffer(string)
+            return struct.unpack(">hhhh", string[:8])
+        else:
+            return None
 
     def get_sonar(self, id):
         pass
 
     def get_voltage(self):
-        string = self.battery_socket.recv()[2:]
-        string = self.pr.unescape_buffer(string)
-        v = struct.unpack(">hh", string[:4])[0]
-        return v
+        string = self._get_data_from_socket(self.battery_socket)
+        if string is not None:
+            string = self.pr.unescape_buffer(string)
+            v = struct.unpack(">hh", string[:4])[0]
+            return v
+        else:
+            return None
 
     def get_current(self):
-        string = self.battery_socket.recv()[2:]
-        string = self.pr.unescape_buffer(string)
-        i = struct.unpack(">hh", string[:4])[1]
-        return i
+        string = self._get_data_from_socket(self.battery_socket)
+        if string is not None:
+            string = self.pr.unescape_buffer(string)
+            i = struct.unpack(">hh", string[:4])[1]
+            return i
+        else:
+            return None
+
+    def get_latest_cmd(self):
+        cmd_content = self._get_data_from_socket(self.ltst_cmd_socket)
+        if cmd_content is not None:
+            return cmd_content
+        else:
+            return None
 
     def flush_messages(self):
         while True:

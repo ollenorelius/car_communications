@@ -44,10 +44,14 @@ class ProtocolReader:
             buf = c
         else:
             buf = self.connection.read(1)
+
         buf += self.connection.read(3)
-        ##print("buf is %s" % buf)
+        #print("buf is %s" % buf)
         DL = struct.unpack(">L", buf)[0]
         #print("DL is %s" % DL)
+        if DL > 1000:
+            self.state = self.state_idle
+            return
         buf = buf + self.connection.read(DL)
         buf = self.unescape_buffer(buf)
         #print(buf)

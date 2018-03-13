@@ -77,7 +77,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         }
 
         self.key_arguments = {
-            QtCore.Qt.Key_W: 550,
+            QtCore.Qt.Key_W: 250,
             QtCore.Qt.Key_S: -350,
             QtCore.Qt.Key_A: 250,
             QtCore.Qt.Key_D: -250,
@@ -113,14 +113,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def camera_thread(self):
         while True:
             temp_image = self.car.get_picture(0)
-
-            #self.picSize = (self.cameraView.size().width(),
-            #                self.cameraView.size().height())
-            temp_image = temp_image.resize(self.picSize)
-            image = temp_image
-            print(self.car.get_voltage())
-            self.cameraView.setPixmap(
-                        QtGui.QPixmap.fromImage(ImageQt.ImageQt(image)))
+            if temp_image is not None:
+                #self.picSize = (self.cameraView.size().width(),
+                #                self.cameraView.size().height())
+                temp_image = temp_image.resize(self.picSize)
+                image = temp_image
+                print(self.car.get_voltage())
+                print(self.car.get_wheel_speeds())
+                self.cameraView.setPixmap(
+                            QtGui.QPixmap.fromImage(ImageQt.ImageQt(image)))
 
     def command_thread(self):
         while True:

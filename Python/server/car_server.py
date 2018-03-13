@@ -25,7 +25,7 @@ def time_op(start, name):
         print('Time taken for %s: %s' % (name, tt))
     return time.time()
 
-
+latest_cmd = msg.LatestCmdMessage(None)
 def publisher_thread(car, socket):
     last_lidar_packet = 0
     last_picture = 0
@@ -43,6 +43,7 @@ def publisher_thread(car, socket):
             socket.send(msg.LidarMessage(list(car.lidar_buffer)).get_zmq_msg())
             socket.send(msg.WheelSpeedMessage(car.current_wheel_speeds).get_zmq_msg())
             socket.send(msg.PropBatteryMessage(car.battery_voltage, car.motor_current).get_zmq_msg())
+            socket.send(latest_cmd.get_zmq_msg())
             last_01_packet = time.time()
 
         time.sleep(0.05)
@@ -55,6 +56,8 @@ def network_thread(socket, car):
     while True:
         inbound = msg.Message(socket.recv())
         if inbound.group not in [16, 1]:
+            global latest_cmd
+            latest_cmd = msg.LatestCmdMessage(inbound.get_zmq_msg())
             print("Got group %s, command %s, data %s" % (inbound.group,
                                                          inbound.command,
                                                          inbound.data))
@@ -66,7 +69,7 @@ def network_thread(socket, car):
 
 def run_server():
     image = b''
-    car = CarHandler(serial_port='/dev/ttyAMA0', baudrate=2000000)
+    car = CarHandler(serial_port='/dev/ttyAMA0', baudrate=1000000)
 
     server_context = zmq.Context()
 
