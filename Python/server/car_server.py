@@ -78,8 +78,6 @@ def run_server():
     image = b''
     car = CarHandler(serial_port='/dev/ttyAMA0', baudrate=1000000)
 
-    car2car = car_to_car_raspberry(car)
-
     server_context = zmq.Context()
 
     publish_socket = server_context.socket(zmq.PUB)
