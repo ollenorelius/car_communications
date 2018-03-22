@@ -53,9 +53,15 @@ def publisher_thread(car, socket):
 
 def network_thread(socket, car):
     """Client handler thread."""
+    fromc2c = False
     while True:
-        inbound = msg.Message(socket.recv())
-        if inbound.group not in [16, 1]:
+        raw = socket.recv()
+        if raw[0] == 255:
+            raw = raw[1:]
+            fromc2c = True
+
+        inbound = msg.Message(raw)
+        if inbound.group not in [16, 1] and not fromc2c:
             global latest_cmd
             latest_cmd = msg.LatestCmdMessage(inbound.get_zmq_msg())
             print("Got group %s, command %s, data %s" % (inbound.group,
@@ -63,6 +69,7 @@ def network_thread(socket, car):
                                                          inbound.data))
         car.send_message(inbound)
         socket.send(msg.OK(0).get_zmq_msg())
+        fromc2c = False
 
 
 
@@ -70,6 +77,8 @@ def network_thread(socket, car):
 def run_server():
     image = b''
     car = CarHandler(serial_port='/dev/ttyAMA0', baudrate=1000000)
+
+    car2car = car_to_car_raspberry(car)
 
     server_context = zmq.Context()
 
