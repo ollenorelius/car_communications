@@ -44,6 +44,9 @@ def publisher_thread(car, socket):
             socket.send(msg.WheelSpeedMessage(car.current_wheel_speeds).get_zmq_msg())
             socket.send(msg.PropBatteryMessage(car.battery_voltage, car.motor_current).get_zmq_msg())
             socket.send(latest_cmd.get_zmq_msg())
+            socket.send(msg.CompassMessage(car.heading).get_zmq_msg())
+            #socket.send(msg.AccMessage(car.heading).get_zmq_msg())
+            #socket.send(msg.GyroMessage(car.heading).get_zmq_msg())
             last_01_packet = time.time()
 
         time.sleep(0.05)
@@ -55,12 +58,9 @@ def network_thread(socket, car):
     """Client handler thread."""
     while True:
         inbound = msg.Message(socket.recv())
-        if inbound.group not in [16, 1]:
+        if inbound.group not in [1]:
             global latest_cmd
             latest_cmd = msg.LatestCmdMessage(inbound.get_zmq_msg())
-            print("Got group %s, command %s, data %s" % (inbound.group,
-                                                         inbound.command,
-                                                         inbound.data))
         car.send_message(inbound)
         socket.send(msg.OK(0).get_zmq_msg())
 

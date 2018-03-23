@@ -36,10 +36,10 @@ car.get_latest_cmd()
 print("doop")
 if im_raw is not None:
     image = im_raw
-    im_fig = ax2.imshow(image, animated=True)
+    im_fig = ax2.plot(data[:,2])
 
 def updatefig(*args):
-    #im_raw = car.get_picture()
+    im_raw = car.get_lidar()
     if im_raw is not None:
         pass
         #image = im_raw
@@ -48,8 +48,12 @@ def updatefig(*args):
 
 def updatelidar(*args):
     data = car.get_lidar()
-    x = -data[:,2] + np.pi*0.5
-    y = data[:,1]
+    if data is not None:
+        x = -data[:,2] + np.pi*0.5
+        y = data[:,1]
+    else:
+        x = 0
+        y = 0
     d = np.column_stack((x,y))
     c.set_offsets(d)
     c.set_color(cm.hsv(y/6000))

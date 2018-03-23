@@ -69,7 +69,7 @@ class Message():
         ret = self.escape_buffer(ret)
 
         DL = struct.pack(">L", len(ret))
-        ret = b''.join([bytes([cb.START]), DL, ret, bytes([cb.END])])
+        ret =b''. join([bytes([cb.START]), DL, ret, bytes([cb.END])])
         return ret
 
     def get_bytestring(self):
@@ -322,7 +322,49 @@ class LatestCmdMessage(Message):
         if data is not None:
             self.data = data
         else:
-            self.data = b'1'
+            self.data = b'5'
         self.finish()
 
-        
+class SonarMessage(Message):
+    def __init__(self, dist, identifier):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_SONAR
+        if dist is not None:
+            self.data = struct.pack(">hB", dist, identifier)
+        else:
+            self.data = b''
+        self.finish()
+
+class CompassMessage(Message):
+    def __init__(self, heading):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_COMPASS
+        if heading is not None:
+            self.data = struct.pack(">h", heading)
+        else:
+            self.data = b'5'
+        self.finish()
+
+class AccMessage(Message):
+    def __init__(self, x, y, z):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_ACC
+        if x is not None:
+            self.data = struct.pack(">hhh", x, y, z)
+        else:
+            self.data = b'5'
+        self.finish()
+
+class GyroMessage(Message):
+    def __init__(self, x, y, z):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_GYRO
+        if x is not None:
+            self.data = struct.pack(">hhh", x, y, z)
+        else:
+            self.data = b'5'
+        self.finish()
