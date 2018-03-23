@@ -12,14 +12,16 @@ import matplotlib.image as mpimg
 import matplotlib.animation as animation
 import matplotlib.cm as cm
 
+from inputs import get_gamepad
+
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     image_lock = threading.Lock()
 
-    car = CarController(address="trevor.local")
+    car = CarController(address="autonomous-platform.local")
 
-    picSize = (800, 600)
+    picSize = (400, 300)
     speed = 0
     turn = 0
 
@@ -64,6 +66,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         QtWidgets.QMainWindow.__init__(self, parent=parent)
         threading.Thread(target=self.camera_thread, daemon=True).start()
         threading.Thread(target=self.command_thread, daemon=True).start()
+        threading.Thread(target=self.input_thread, daemon=True).start()
         self.setupUi(self)
 
         self.key_down_actions = {
@@ -112,14 +115,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def camera_thread(self):
         while True:
-            temp_image = self.car.get_picture(0)
+            for _ in range(2):
+                temp_image = self.car.get_picture(0)
+                print(self.car.get_voltage())
+                print(self.car.get_wheel_speeds())
+                print(self.car.get_compass())
             if temp_image is not None:
                 #self.picSize = (self.cameraView.size().width(),
                 #                self.cameraView.size().height())
-                temp_image = temp_image.resize(self.picSize)
+                #temp_image = temp_image.resize(self.picSize)
                 image = temp_image
-                print(self.car.get_voltage())
-                print(self.car.get_wheel_speeds())
                 self.cameraView.setPixmap(
                             QtGui.QPixmap.fromImage(ImageQt.ImageQt(image)))
 
@@ -127,8 +132,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         while True:
             self.car.set_speed(self.speed)
             self.car.set_turnrate(self.turn)
-            time.sleep(0.5)
+            
+            
+            time.sleep(0.2)
 
+    def input_thread(self): 
+        while True:
+            events = get_gamepad()
+            for event in events:
+                if event.code == "ABS_X":
+                    self.turn = -(int(event.state) - 32767)//100 * 2
+                if event.code == "ABS_Z":
+                    self.speed = int((255-int(event.state))*4)
 
 
 if __name__ == "__main__":

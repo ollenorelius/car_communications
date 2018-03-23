@@ -93,7 +93,6 @@ class ProtocolReader:
 
     def unescape_buffer(self, buf):
         """Remove effect of escape_buffer."""
-        print("Unescaping buffer of length %s" % len(buf))
         esc_byte = bytes({cb.ESC})
         esc_escaped = bytes({cb.ESC}) + bytes({cb.ESC ^ cb.ESC_XOR})
 
@@ -102,7 +101,6 @@ class ProtocolReader:
 
         escaped = buf.replace(start_escaped, start_byte) \
             .replace(esc_escaped, esc_byte)
-        print("Result has length %s" % len(escaped))
         return escaped
 
     def get_buffer(self):

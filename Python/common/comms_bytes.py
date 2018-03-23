@@ -11,6 +11,7 @@ CMD_STATUS = 0x01  # Status commands / requests
 HEARTBEAT = 0x01
 HANDSHAKE = 0x02
 ASK_STATUS = 0x03
+LATEST_CMD = 0x04
 
 CMD_SET_PARAMS = 0x02
 SET_MOT_THR = 0x01
@@ -23,12 +24,10 @@ WHEEL_SPD = 0x01  # int8 right, int8 left
 CAR_SPD = 0x02  # int16 speed
 TURN_SPD = 0x03  # int16 deg/s
 
-
 CMD_SPEED_CL = 0x11  # Closed loop control
 DIST_CL = 0x01  # int16 cm
 TURN_CL = 0x02  # int16 deg
 TURN_ABS_CL = 0x03  # int16 heading
-
 
 REQ_SENS = 0x20  # Data requests
 REQ_COMPASS = 0x01
@@ -46,7 +45,11 @@ SENS_PIC = 0x06
 SENS_SPEED = 0x05  # int16 speed, int16 turn
 SENS_WHEEL = 0x07  # int16 FR, FL, RR, RL
 SENS_TORQUE = 0x08  # int16 FR, FL, RR, RL
+SENS_P_BATT = 0x09 # int16 mVolt, int16 mA
+SENS_SONAR =  0x0A # int16 mm, int8 id
 
+AUX_CMD = 0x40
+HEADLIGHT_MODE = 0x01  # int8 mode
 
 
 # Responses

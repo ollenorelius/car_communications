@@ -69,7 +69,7 @@ class Message():
         ret = self.escape_buffer(ret)
 
         DL = struct.pack(">L", len(ret))
-        ret = b''.join([bytes([cb.START]), DL, ret, bytes([cb.END])])
+        ret =b''. join([bytes([cb.START]), DL, ret, bytes([cb.END])])
         return ret
 
     def get_bytestring(self):
@@ -299,5 +299,72 @@ class WheelSpeedMessage(Message):
         Message.__init__(self)
         self.group = cb.SENS
         self.command = cb.SENS_WHEEL
-        self.data = struct.pack('>hhhh', speeds[0], speeds[1], speeds[2], speeds[3])
+        self.data = struct.pack('>hhhh',
+                                speeds[0],
+                                speeds[1],
+                                speeds[2],
+                                speeds[3])
+        self.finish()
+
+class PropBatteryMessage(Message):
+    def __init__(self, voltage, current):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_P_BATT
+        self.data = struct.pack('>hh', voltage, current)
+        self.finish()
+
+class LatestCmdMessage(Message):
+    def __init__(self, data):
+        Message.__init__(self)
+        self.group = cb.CMD_STATUS
+        self.command = cb.LATEST_CMD
+        if data is not None:
+            self.data = data
+        else:
+            self.data = b'5'
+        self.finish()
+
+class SonarMessage(Message):
+    def __init__(self, dist, identifier):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_SONAR
+        if dist is not None:
+            self.data = struct.pack(">hB", dist, identifier)
+        else:
+            self.data = b''
+        self.finish()
+
+class CompassMessage(Message):
+    def __init__(self, heading):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_COMPASS
+        if heading is not None:
+            self.data = struct.pack(">h", heading)
+        else:
+            self.data = b'5'
+        self.finish()
+
+class AccMessage(Message):
+    def __init__(self, x, y, z):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_ACC
+        if x is not None:
+            self.data = struct.pack(">hhh", x, y, z)
+        else:
+            self.data = b'5'
+        self.finish()
+
+class GyroMessage(Message):
+    def __init__(self, x, y, z):
+        Message.__init__(self)
+        self.group = cb.SENS
+        self.command = cb.SENS_GYRO
+        if x is not None:
+            self.data = struct.pack(">hhh", x, y, z)
+        else:
+            self.data = b'5'
         self.finish()
