@@ -70,7 +70,7 @@ class CarController:
             return string
         except zmq.error.Again:
             return None
-        
+
 
     def get_picture(self, camera_id=0):
         img_bytes = self._get_data_from_socket(self.image_socket)
@@ -143,7 +143,7 @@ class CarController:
     def get_compass(self):
         heading_raw = self._get_data_from_socket(self.compass_socket)
         if heading_raw is not b'':
-            print(heading_raw)
+            #print(heading_raw)
             heading = struct.unpack(">h", heading_raw[0:2])
             return heading
 
