@@ -24,7 +24,7 @@ class VehicleHandler:
     Contains methods for handling serial communications asynchronously.
     """
 
-    outbound_serial_queue = queue.Queue()
+    outbound_serial_queue = queue.PriorityQueue()
     inbound_serial_queue = queue.Queue()
 
     def __init__(self, serial_port='/dev/ttyAMA0', baudrate=2000000):
@@ -71,9 +71,24 @@ class VehicleHandler:
     def serial_writer(self):
         """Thread function for writing messages to the serial port."""
         while True:
+            tmptime = time.time()
             message = self.outbound_serial_queue.get()
             #print("Sending %s to car" % message.get_serial_msg())
-            self.connection.write(message.get_serial_msg())
+            if not (tmptime - message[1][1] > message[1][0]): #if not timeout
+                self.connection.write(message.get_serial_msg())
+            else:
+                print("Message timeout")
+            if(self.outbound_serial_queue.qsize() > 200): #If queue "full" empty trash values
+                self.clear_queue()
+
+    def clear_queue(self):
+        tmpqueue = queue.PriorityQueue()
+        while(self.outbound_serial_queue.qsize() > 0): #clear queue
+            tmptime = time.time()
+            tmpvalue = self.outbound_serial_queue.get()
+            if not (tmptime - tmpvalue[1][1] > tmpvalue[1][0]): #save the valid entries
+                tmpqueue.put(tmpvalue)
+        self.outbound_serial_queue.queue = copy.deepcopy(tmpqueue.queue) #copy tmpqueue
 
     def handle_inbound(self):
         """Default inbound serial queue handler. Discards messages."""
@@ -82,7 +97,7 @@ class VehicleHandler:
 
     def send_message(self, message):
         """Send a message to the DK."""
-        self.outbound_serial_queue.put(message)
+        self.outbound_serial_queue.put((0, [1, time.time(), message]))
 
     def heartbeat_thread(self):
         """Thread method for sending regular heartbeat."""
