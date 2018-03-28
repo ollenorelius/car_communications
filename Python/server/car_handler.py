@@ -95,9 +95,9 @@ class VehicleHandler:
         while True:
             message = self.inbound_serial_queue.get()
 
-    def send_message(self, message):
+    def send_message(self, prio, message):
         """Send a message to the DK."""
-        self.outbound_serial_queue.put((0, [1, time.time(), message]))
+        self.outbound_serial_queue.put((prio, [1, time.time(), message]))
 
     def heartbeat_thread(self):
         """Thread method for sending regular heartbeat."""
