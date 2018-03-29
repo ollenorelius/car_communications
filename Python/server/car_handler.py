@@ -72,20 +72,14 @@ class VehicleHandler:
         """Thread function for writing messages to the serial port."""
         while True:
             tmptime = time.time()
-            print(self.outbound_serial_queue.qsize())
             message = self.outbound_serial_queue.get()
             #print("Sending %s to car" % message.get_serial_msg())
             if not (tmptime - message[1][1] > message[1][0]): #if not timeout
-                print("not timeout")
-                print(message[1][2].get_serial_msg())
                 self.connection.write(message[1][2].get_serial_msg())
             else:
                 print("Message timeout")
             if(self.outbound_serial_queue.qsize() > 200): #If queue "full" empt$
                 self.clear_queue()
-            print("not timeout")
-            print(message[1][2].get_serial_msg())
-            self.connection.write(message[1][2].get_serial_msg())
 
     def clear_queue(self):
         tmpqueue = queue.PriorityQueue()
