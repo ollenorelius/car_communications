@@ -59,6 +59,7 @@ def updatelidar(*args):
     c.set_color(cm.hsv(y/6000))
     return c,
 
+#print(car.get_compass())
 
 #ani = animation.FuncAnimation(fig, updatefig, interval=1, blit=True)
 ani2 = animation.FuncAnimation(fig, updatelidar, interval=1, blit=True)

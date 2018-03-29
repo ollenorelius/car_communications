@@ -113,7 +113,16 @@ class CarController:
             return None
 
     def get_sonar(self, id):
-        pass
+        sonar_string = self._get_data_from_socket(self.sonar_socket)
+        if sonar_string is not None and sonar_string != b'':
+            sonar_string = self.pr.unescape_buffer(sonar_string)
+            data = struct.unpack(">hB", sonar_string[:3])
+            if data[1] == id:
+                return data[0]
+            else:
+                return None
+        else:
+            return None
 
     def get_voltage(self):
         string = self._get_data_from_socket(self.battery_socket)
@@ -142,8 +151,7 @@ class CarController:
 
     def get_compass(self):
         heading_raw = self._get_data_from_socket(self.compass_socket)
-        if heading_raw is not b'':
-            print(heading_raw)
+        if heading_raw is not b'' and heading_raw is not None:
             heading = struct.unpack(">h", heading_raw[0:2])
             return heading
 

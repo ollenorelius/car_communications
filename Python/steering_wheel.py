@@ -120,6 +120,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 print(self.car.get_voltage())
                 print(self.car.get_wheel_speeds())
                 print(self.car.get_compass())
+                print("SONAR: " + str(self.car.get_sonar(1)))
             if temp_image is not None:
                 #self.picSize = (self.cameraView.size().width(),
                 #                self.cameraView.size().height())
@@ -132,7 +133,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         while True:
             self.car.set_speed(self.speed)
             self.car.set_turnrate(self.turn)
-            
             
             time.sleep(0.2)
 
