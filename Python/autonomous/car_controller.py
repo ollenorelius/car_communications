@@ -28,6 +28,7 @@ class CarController:
     image_socket = context.socket(zmq.SUB)
     battery_socket = context.socket(zmq.SUB)
     ltst_cmd_socket = context.socket(zmq.SUB)
+    compass_socket = context.socket(zmq.SUB)
 
     command_socket = context.socket(zmq.REQ)
     outbound_queue = Queue()
@@ -48,7 +49,9 @@ class CarController:
         conf_sub(self.speed_socket, bytes([cb.SENS, cb.SENS_WHEEL]), data_address)
         conf_sub(self.battery_socket, bytes([cb.SENS, cb.SENS_P_BATT]), data_address)
         conf_sub(self.ltst_cmd_socket, bytes([cb.CMD_STATUS, cb.LATEST_CMD]), data_address)
-        conf_sub(self.sonar_socket, b"sonar", data_address)
+        conf_sub(self.sonar_socket, bytes([cb.SENS, cb.SENS_SONAR]), data_address)
+        conf_sub(self.compass_socket, bytes([cb.SENS, cb.SENS_COMPASS]), data_address)
+
         self.command_socket.setsockopt(zmq.RCVHWM, 1)
         self.command_socket.setsockopt(zmq.SNDHWM, 1)
 
@@ -110,7 +113,16 @@ class CarController:
             return None
 
     def get_sonar(self, id):
-        pass
+        sonar_string = self._get_data_from_socket(self.sonar_socket)
+        if sonar_string is not None and sonar_string != b'':
+            sonar_string = self.pr.unescape_buffer(sonar_string)
+            data = struct.unpack(">hB", sonar_string[:3])
+            if data[1] == id:
+                return data[0]
+            else:
+                return None
+        else:
+            return None
 
     def get_voltage(self):
         string = self._get_data_from_socket(self.battery_socket)
@@ -136,6 +148,12 @@ class CarController:
             return cmd_content
         else:
             return None
+
+    def get_compass(self):
+        heading_raw = self._get_data_from_socket(self.compass_socket)
+        if heading_raw is not b'' and heading_raw is not None:
+            heading = struct.unpack(">h", heading_raw[0:2])
+            return heading
 
     def flush_messages(self):
         while True:

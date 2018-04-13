@@ -121,6 +121,8 @@ class CarHandler(VehicleHandler):
     current_wheel_speeds = [0, 0, 0, 0]
     battery_voltage = 0
     motor_current = 0
+    heading = 0
+    sonars = [0,0,0,0]
 
     has_image = False
 
@@ -191,6 +193,13 @@ class CarHandler(VehicleHandler):
                     data = struct.unpack(">hh", message.data)
                     self.battery_voltage = data[0]
                     self.motor_current = data[1]
+                elif message.command == cb.SENS_COMPASS:
+                    heading = struct.unpack(">h", message.data)[0]
+                    self.heading = heading
+                elif message.command == cb.SENS_SONAR:
+                    dist, index = struct.unpack(">hB", message.data)
+                    if index in range(4):
+                        self.sonars[index] = dist
 
             elif message.group == cb.CMD_STATUS:
                 if message.command == cb.HEARTBEAT:
@@ -208,9 +217,7 @@ class CarHandler(VehicleHandler):
                     if d[1] < min_dist and d[0] > 1:
                         min_dist = d[1]
                         ang = d[2]
-                print("Closest point to robot is %s mm away at angle %s" % (min_dist/4, ang/64))
-                print("Battery voltage: %s" % self.battery_voltage)
-                print("Wheel speeds: %s" % str(self.current_wheel_speeds))
+
 
     def decode_lidar_chunk(self, chunk):
         """Map a chunk of lidar data into (quality, distance, angle)."""
