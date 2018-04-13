@@ -1,4 +1,5 @@
 import sys
+import argparse
 import zmq
 from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
@@ -10,7 +11,11 @@ import io
 from PIL import Image
 from autonomous.car_controller import CarController
 
-car = CarController(address='autonomous-platform.local')
+ap = argparse.ArgumentParser()
+ap.add_argument("-t", "--target", required=False, help="target IP", default="trevor.local")
+args = vars(ap.parse_args())
+
+car = CarController(address=args["target"])
 N = 150
 r = 2 * np.random.rand(N)
 theta = 2 * np.pi * np.random.rand(N)
@@ -21,13 +26,14 @@ fig = plt.figure()
 plt.ion()
 
 ax = fig.add_subplot(121, projection="polar")
+ax.set_ylim(0, 8000)
 ax2 = fig.add_subplot(122)
 
 data = car.get_lidar()
 while data is None:
     data = car.get_lidar()
 print(data)
-c = ax.scatter(-data[:50,2] + np.pi, data[:50,1], c=data[:50,1], s=50, cmap='hsv', alpha=0.75)
+c = ax.scatter(-data[:,2] + np.pi, data[:,1], c=data[:,1], s=50, cmap='hsv', alpha=0.75)
 plt.pause(0.05)
 
 print("boop")
@@ -54,6 +60,7 @@ def updatelidar(*args):
     else:
         x = 0
         y = 0
+    print(np.max(data))
     d = np.column_stack((x,y))
     c.set_offsets(d)
     c.set_color(cm.hsv(y/6000))
