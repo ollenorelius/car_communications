@@ -56,13 +56,26 @@ def publisher_thread(car, socket):
 
 def network_thread(socket, car):
     """Client handler thread."""
+    fromc2c = False
     while True:
-        inbound = msg.Message(socket.recv())
-        if inbound.group not in [1]:
+        prio = 10
+        raw = socket.recv()
+        if raw[0] == 255:
+            prio = int(raw[1])
+            raw = raw[2:]
+            fromc2c = True
+
+        inbound = msg.Message(raw)
+        if inbound.group not in [16, 1] and not fromc2c:
             global latest_cmd
             latest_cmd = msg.LatestCmdMessage(inbound.get_zmq_msg())
-        car.send_message(inbound)
+            print("Got group %s, command %s, data %s" % (inbound.group,
+                                                         inbound.command,
+                                                         inbound.data))
+        car.send_message(inbound, prio)
         socket.send(msg.OK(0).get_zmq_msg())
+        fromc2c = False
+
 
 
 
