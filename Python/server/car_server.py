@@ -66,7 +66,7 @@ def network_thread(socket, car):
             fromc2c = True
 
         inbound = msg.Message(raw)
-        if inbound.group not in [16, 1] and not fromc2c:
+        if inbound.group not in [1] and not fromc2c:
             global latest_cmd
             latest_cmd = msg.LatestCmdMessage(inbound.get_zmq_msg())
             print("Got group %s, command %s, data %s" % (inbound.group,
