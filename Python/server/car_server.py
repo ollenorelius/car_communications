@@ -15,6 +15,8 @@ from server.command_handler import CommandHandler
 import common.message as msg
 import common.comms_bytes as cb
 
+import car_to_x.CarToCar.car_to_car as c2c
+
 import zmq
 
 
@@ -100,7 +102,7 @@ def run_server():
     threading.Thread(target=network_thread, args=[command_socket, car], daemon=False).start()
     print("Car server online, awaiting connections")
 
-
+    car2car = c2c.car_to_car(server_context)
 
 
 
