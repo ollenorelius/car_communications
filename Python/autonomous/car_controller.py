@@ -20,17 +20,7 @@ def conf_sub(socket, filter_bytes, address):
     socket.connect(address)
 
 class CarController:
-    context = zmq.Context()
 
-    lidar_socket = context.socket(zmq.SUB)
-    sonar_socket = context.socket(zmq.SUB)
-    speed_socket = context.socket(zmq.SUB)
-    image_socket = context.socket(zmq.SUB)
-    battery_socket = context.socket(zmq.SUB)
-    ltst_cmd_socket = context.socket(zmq.SUB)
-    compass_socket = context.socket(zmq.SUB)
-
-    command_socket = context.socket(zmq.REQ)
     outbound_queue = Queue()
     image_stream = io.BytesIO()
     RC_connection_lock = threading.RLock()
@@ -40,7 +30,20 @@ class CarController:
     pr = ProtocolReader()
 
 
-    def __init__(self, address='192.168.150.133'):
+    def __init__(self, address='192.168.150.133', context = None):
+        self.context = context
+        if context is None:
+            self.context = zmq.Context()
+
+        self.lidar_socket = self.context.socket(zmq.SUB)
+        self.sonar_socket = self.context.socket(zmq.SUB)
+        self.speed_socket = self.context.socket(zmq.SUB)
+        self.image_socket = self.context.socket(zmq.SUB)
+        self.battery_socket = self.context.socket(zmq.SUB)
+        self.ltst_cmd_socket = self.context.socket(zmq.SUB)
+        self.compass_socket = self.context.socket(zmq.SUB)
+
+        self.command_socket = self.context.socket(zmq.REQ)
 
         cmd_address = "tcp://"+address+":5555"
         data_address = "tcp://"+address+":5556"
@@ -70,7 +73,7 @@ class CarController:
             return string
         except zmq.error.Again:
             return None
-        
+
 
     def get_picture(self, camera_id=0):
         img_bytes = self._get_data_from_socket(self.image_socket)

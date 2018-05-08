@@ -15,6 +15,8 @@ from server.command_handler import CommandHandler
 import common.message as msg
 import common.comms_bytes as cb
 
+import car_to_x.CarToCar.car_to_car as c2c
+
 import zmq
 
 
@@ -45,6 +47,8 @@ def publisher_thread(car, socket):
             socket.send(msg.PropBatteryMessage(car.battery_voltage, car.motor_current).get_zmq_msg())
             socket.send(latest_cmd.get_zmq_msg())
             socket.send(msg.CompassMessage(car.heading).get_zmq_msg())
+            socket.send(msg.SonarMessage(car.sonars[0], 0).get_zmq_msg())
+            socket.send(msg.SonarMessage(car.sonars[1], 1).get_zmq_msg())
             #socket.send(msg.AccMessage(car.heading).get_zmq_msg())
             #socket.send(msg.GyroMessage(car.heading).get_zmq_msg())
             last_01_packet = time.time()
@@ -98,7 +102,7 @@ def run_server():
     threading.Thread(target=network_thread, args=[command_socket, car], daemon=False).start()
     print("Car server online, awaiting connections")
 
-
+    car2car = c2c.car_to_car(server_context)
 
 
 
