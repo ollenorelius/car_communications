@@ -55,34 +55,24 @@ def publisher_thread(car, socket):
 
         time.sleep(0.05)
 
-
-
-
 def network_thread(socket, car):
     """Client handler thread."""
-    fromc2c = False
     while True:
-        prio = 10
         raw = socket.recv()
-        if raw[0] == 255:
-            prio = int(raw[1])
-            raw = raw[2:]
-            fromc2c = True
-
         inbound = msg.Message(raw)
-        if inbound.group not in [1] and not fromc2c:
+
+        if inbound.group not in [1] and not inbound.c2c == 255:
             global latest_cmd
             latest_cmd = msg.LatestCmdMessage(inbound.get_zmq_msg())
-            print("Got group %s, command %s, data %s" % (inbound.group,
+            print("NETWORK THREAD: Got c2c %s, prio %s, group %s, command %s, data %s" % (inbound.c2c,
+                                                         inbound.prio,
+                                                         inbound.group,
                                                          inbound.command,
                                                          inbound.data))
-        car.send_message(inbound, prio)
+        if inbound.c2c == 255:
+            print("Network thread got message from c2c")
+        car.send_message(inbound, inbound.prio)
         socket.send(msg.OK(0).get_zmq_msg())
-        fromc2c = False
-
-
-
-
 
 def run_server():
     image = b''

@@ -51,7 +51,7 @@ class CarController:
         conf_sub(self.image_socket, bytes([cb.SENS, cb.SENS_PIC]), data_address)
         conf_sub(self.speed_socket, bytes([cb.SENS, cb.SENS_WHEEL]), data_address)
         conf_sub(self.battery_socket, bytes([cb.SENS, cb.SENS_P_BATT]), data_address)
-        conf_sub(self.ltst_cmd_socket, bytes([cb.CMD_STATUS, cb.LATEST_CMD]), data_address)
+        conf_sub(self.ltst_cmd_socket, bytes([cb.CMD_STATUS, cb.LATEST_CMD]), data_address) ##FIX THIS ON ALL DUE TO CHANGES TO GET_ZMQ_MSG?
         conf_sub(self.sonar_socket, bytes([cb.SENS, cb.SENS_SONAR]), data_address)
         conf_sub(self.compass_socket, bytes([cb.SENS, cb.SENS_COMPASS]), data_address)
 
@@ -67,11 +67,18 @@ class CarController:
         threading.Thread(target=self.flush_messages, daemon=True).start()
         print("Car controller init OK!")
 
+     
     def _get_data_from_socket(self, socket):
+        """
+        * Retreives the data from a message. 
+        * @param The socket to receive from
+        * @return The data portion of a Message. The data portion is usually another Message object.
+        """
         try:
-            string = socket.recv()[2:]
+            string = socket.recv()[4:] 
             return string
         except zmq.error.Again:
+            print("Timeout receiving data from socket")
             return None
 
 
@@ -148,6 +155,7 @@ class CarController:
     def get_latest_cmd(self):
         cmd_content = self._get_data_from_socket(self.ltst_cmd_socket)
         if cmd_content is not None:
+            ##cmd_content = self.pr.unescape_buffer(cmd_content) ##SHALL IT BE HERE???
             return cmd_content
         else:
             return None

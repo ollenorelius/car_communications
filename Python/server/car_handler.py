@@ -95,7 +95,7 @@ class VehicleHandler:
         while True:
             message = self.inbound_serial_queue.get()
 
-    def send_message(self, message, prio=10):
+    def send_message(self, message, prio = 10):
         """Send a message to the DK."""
         self.outbound_serial_queue.put((prio, [1, time.time(), message]))
 

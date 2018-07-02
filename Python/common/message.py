@@ -26,41 +26,50 @@ class Message():
     command = 0
     data = b''
     chk = 0
+    prio = 9
+    c2c = 0
+
 
     def __init__(self, buf=[], source="zmq"):
         """Create a message from contents of buf."""
         if buf == []:
             self.ID = next(id_generator)
-            return 0
+            return None
         else:
             try:
                 if source == "zmq":
-                    buf = self.unescape_buffer(buf)
                     self.group = struct.unpack(">B", bytes([buf[0]]))[0]
                     self.command = struct.unpack(">B", bytes([buf[1]]))[0]
-                    self.data = bytes(buf[2:-1])
+                    self.prio = struct.unpack(">B", bytes([buf[2]]))[0]
+                    self.c2c = struct.unpack(">B", bytes([buf[3]]))[0]
+                    self.data = bytes(buf[4:-1])
                     self.chk = struct.unpack(">B", bytes([buf[-1]]))[0]
+
+
                 elif source == "serial":
                     self.group = struct.unpack(">B", bytes([buf[4]]))[0]
                     self.command = struct.unpack(">B", bytes([buf[5]]))[0]
                     self.data = bytes(buf[6:-1])
                     self.chk = struct.unpack(">B", bytes([buf[-1]]))[0]
+
             except IndexError:
                 self.DL = 0
                 self.group = 0
                 self.command = 0
                 self.data = 0
                 self.chk = 8
+
     def get_zmq_msg(self):
         ret = b''
         ret = b''.join([ret, struct.pack(">c", bytes([self.group]))])
         ret = b''.join([ret, struct.pack(">c", bytes([self.command]))])
+        ret = b''.join([ret, struct.pack(">c", bytes([self.prio]))])
+        ret = b''.join([ret, struct.pack(">c", bytes([self.c2c]))])
         ret = b''.join([ret, bytes(self.data)])
         ret = b''.join([ret, struct.pack(">c", bytes([self.get_checksum()]))])
         return self.escape_buffer(ret)
 
     def get_serial_msg(self):
-
         ret = b''
         ret = b''.join([ret, struct.pack(">c", bytes([self.group]))])
         ret = b''.join([ret, struct.pack(">c", bytes([self.command]))])
@@ -334,6 +343,27 @@ class SonarMessage(Message):
             self.data = struct.pack(">hB", dist, identifier)
         else:
             self.data = b''
+        self.finish()
+
+class C2cMessage(Message):
+    def __init__(self, data):
+        Message.__init__(self)
+        print(str(data))
+        self.c2c = 255
+        self.prio = data[1]
+        if(data[2] == cb.CMD_SPEED): #Change of speed settings
+            self.command = cb.CMD_SPEED
+            self.data = data[3:5]
+            print("setting data to: " + str(data[3:5]))
+            print("of type: " + str(type(self.data)))
+        elif(data[2] == cb.CMD_SET_PARAMS): # For arming/disarming
+            self.command = cb.CMD_SET_PARAMS
+            self.data = int.to_bytes(1, 1, byteorder='big')
+            print("setting data to: " + str(self.data))
+            print("of type: " + str(type(self.data)))
+        else:
+            print("finished preemptivly")
+            self.finish()
         self.finish()
 
 class CompassMessage(Message):
