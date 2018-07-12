@@ -45,7 +45,6 @@ class Message():
                     self.data = bytes(buf[4:-1])
                     self.chk = struct.unpack(">B", bytes([buf[-1]]))[0]
 
-
                 elif source == "serial":
                     self.group = struct.unpack(">B", bytes([buf[4]]))[0]
                     self.command = struct.unpack(">B", bytes([buf[5]]))[0]
@@ -119,6 +118,7 @@ class Message():
         if self.chk == self.get_checksum() or self.chk == 255:
             return True
         else:
+            print(self.get_bytestring())
             print("got invalid message: got chk %s, calc %s" % (self.chk, self.get_checksum()))
             return False
 
@@ -245,7 +245,7 @@ class RequestLidar(Message):
         Message.__init__(self)
         self.group = cb.REQ_SENS
         self.command = cb.REQ_LIDAR
-        self.data = pack_char(identifier)
+        self.data = pack_char(id)
         self.finish()
 
 
