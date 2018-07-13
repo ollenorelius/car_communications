@@ -67,11 +67,18 @@ class CarController:
         threading.Thread(target=self.flush_messages, daemon=True).start()
         print("Car controller init OK!")
 
+     
     def _get_data_from_socket(self, socket):
+        """
+        * Retreives the data from a message. 
+        * @param The socket to receive from
+        * @return The data portion of a Message. The data portion is usually another Message object.
+        """
         try:
-            string = socket.recv()[2:]
+            string = socket.recv()[4:] 
             return string
         except zmq.error.Again:
+            print("Timeout receiving data from socket")
             return None
 
 

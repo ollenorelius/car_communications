@@ -14,11 +14,36 @@ from server.protocol_reader import ProtocolReader
 from server.command_handler import CommandHandler
 import common.message as msg
 import common.comms_bytes as cb
+import json
+from pathlib import Path
+
 
 import car_to_x.CarToCar.car_to_car as c2c
 
 import zmq
 
+def config_thread(socket):
+    while True:
+        message = socket.recv()
+        if message == 0:
+            time.sleep(1)
+
+        elif message == b'1':
+            print("Sending config data to control panel")
+            with open('%s/config.json' %(Path.home())) as json_data_file:
+                data = json.load(json_data_file)
+            socket.send_json(data, flags = 0, indent = True)
+            message = 0
+
+        else:
+            print("Writing to config")
+            print(message)
+            data = message.decode()
+            print(data)
+            with open('%s/config.json' %(Path.home()), 'w') as f:
+                f.write(data)
+            socket.send(b'ok')
+            message = 0
 
 def time_op(start, name):
     """Timing function used for debug."""
@@ -37,7 +62,7 @@ def publisher_thread(car, socket):
             # im_msg = msg.ImageMessage(car.image)
             # Ideally I want to do the above, but it copies too much data,
             # so it slows the transfer down too much.
-            socket.send(bytes([cb.SENS, cb.SENS_PIC]) + car.image)
+            socket.send(bytes([cb.SENS, cb.SENS_PIC, cb.TURN_SPD, cb.SET_MOT_THR]) + car.image)
             car.has_image = False
             last_picture = time.time()
 
@@ -55,40 +80,33 @@ def publisher_thread(car, socket):
 
         time.sleep(0.05)
 
-
-
-
 def network_thread(socket, car):
     """Client handler thread."""
-    fromc2c = False
     while True:
-        prio = 10
         raw = socket.recv()
-        if raw[0] == 255:
-            prio = int(raw[1])
-            raw = raw[2:]
-            fromc2c = True
-
         inbound = msg.Message(raw)
-        if inbound.group not in [16, 1] and not fromc2c:
+
+        if inbound.group not in [1] and not inbound.c2c == 255:
             global latest_cmd
             latest_cmd = msg.LatestCmdMessage(inbound.get_zmq_msg())
-            print("Got group %s, command %s, data %s" % (inbound.group,
+            print("NETWORK THREAD: Got c2c %s, prio %s, group %s, command %s, data %s" % (inbound.c2c,
+                                                         inbound.prio,
+                                                         inbound.group,
                                                          inbound.command,
                                                          inbound.data))
-        car.send_message(inbound, prio)
+        if inbound.c2c == 255:
+            print("Network thread got message from c2c")
+        car.send_message(inbound, inbound.prio)
         socket.send(msg.OK(0).get_zmq_msg())
-        fromc2c = False
-
-
-
-
 
 def run_server():
     image = b''
     car = CarHandler(serial_port='/dev/ttyAMA0', baudrate=1000000)
 
     server_context = zmq.Context()
+
+    config_socket = server_context.socket(zmq.REP)
+    config_socket.bind("tcp://0.0.0.0:5563")
 
     publish_socket = server_context.socket(zmq.PUB)
     publish_socket.setsockopt(zmq.SNDHWM, 1)
@@ -100,9 +118,11 @@ def run_server():
 
     threading.Thread(target=publisher_thread, args=[car, publish_socket], daemon=True).start()
     threading.Thread(target=network_thread, args=[command_socket, car], daemon=False).start()
+    threading.Thread(target=config_thread, args=[config_socket], daemon=False).start()
     print("Car server online, awaiting connections")
 
     car2car = c2c.car_to_car(server_context)
+    
 
 
 

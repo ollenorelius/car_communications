@@ -1,0 +1,1 @@
+protoc config.proto --python_out=. 

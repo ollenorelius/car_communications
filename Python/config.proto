@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package config;
+
+message Config {
+  optional bool Car_To_Car = 1 [ default = false ];
+  optional bool SLAM = 2 [ default = false ];
+  optional bool Deep_Learning = 3 [ default = false ];
+}
