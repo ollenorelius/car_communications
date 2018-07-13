@@ -17,7 +17,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     image_lock = threading.Lock()
 
-    car = CarController(address="trevor.local")
+    car = CarController(address="autonomous-platform.local")
 
     picSize = (800, 600)
     speed = 0

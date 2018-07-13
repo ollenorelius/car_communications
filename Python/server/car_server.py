@@ -62,7 +62,7 @@ def publisher_thread(car, socket):
             # im_msg = msg.ImageMessage(car.image)
             # Ideally I want to do the above, but it copies too much data,
             # so it slows the transfer down too much.
-            socket.send(bytes([cb.SENS, cb.SENS_PIC]) + car.image)
+            socket.send(bytes([cb.SENS, cb.SENS_PIC, cb.TURN_SPD, cb.SET_MOT_THR]) + car.image)
             car.has_image = False
             last_picture = time.time()
 
