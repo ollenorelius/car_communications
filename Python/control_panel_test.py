@@ -13,6 +13,12 @@ class control_panel:
     TREVOR = "trevor.local"
     AUTONOMOUS = "autonomous-platform.local"
 
+    """with open('%s/config.json' %(Path.home())) as json_data_file:
+        data = json.load(json_data_file)"""
+
+
+    car = CarController("127.0.0.1")
+
     def init_sockets(self):
         self.context = zmq.Context()
         self.req_socket = self.context.socket(zmq.REQ)
@@ -33,8 +39,9 @@ class control_panel:
         self.req_socket.send_json(self.data, flags = 0, indent = True)
         self.req_socket.recv()
 
-    def start(self):
-        self.car.set_speed(200)
+        """#jsonData = json.dumps(self.data)
+        with open('%s/config.json' %(Path.home()), 'w') as f:                      
+            json.dump(self.data, f, indent=True)"""
 
     def stop(self):
         self.car.set_speed(0)
@@ -72,19 +79,12 @@ class control_panel:
 
     def print_available_commands(self):
         print("Available commands: ")
-        print("")
         print("help - Displays the available commands")
-        print("")
-        print("change_car - Change the active car")
-        print("")
-        print("start - Starts the car")
         print("stop - Stops the car")
         print("arm - Arms the motors")
         print("disarm - Disarms the motors")
-        print("")
         print("hardware_info - Displays hardware related information about the platform")
         print("current_config - Displays the current config of software")
-        print("")
         print("enable_c2c - Enables car to car communications")
         print("disable_c2c - Disables car to car communications")
         print("enable_slam - Enables SLAM")
@@ -120,7 +120,9 @@ class control_panel:
         self.req_socket.send(b'1')
         data = self.req_socket.recv()
         self.data = json.loads(data.decode())
-        self.car = CarController(self.active_car)
+
+        print(self.data)
+
         self.config_dict = {'Car_To_Car': self.data['Car']['Car_To_Car'], 'SLAM': self.data['Car']['SLAM'], 'Deep_Learning': self.data['Car']['Deep_Learning']}
         self.update_hardware_info()
                 
@@ -135,8 +137,6 @@ class control_panel:
             print("")
             if(user_input == 'help'):
                 self.print_available_commands()
-            elif(user_input == 'start'):
-                self.start()
             elif(user_input == 'stop'):
                 self.stop()
             elif(user_input == 'disarm'):
@@ -193,4 +193,12 @@ class control_panel:
 
 if __name__ == '__main__':
     panel = control_panel()
+    #panel.print_available_commands()
     threading.Thread(target=panel.get_requested_car(), daemon=False).start()
+    #threading.Thread(target=panel.get_user_commands, daemon=False).start()
+    #threading.Thread(target=panel.config_publisher, daemon=False).start()
+
+
+"""TODO control panel publishes dict with config info
+enable car_to_car shold be moved into ADAS-software
+Publish to thesis logs, prints etc"""
