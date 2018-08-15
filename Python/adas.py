@@ -15,6 +15,7 @@ class adas:
 
     stop = False
 
+    prev_message = 100
     dl_message = None
     c2c_message = None
     lane_message = None
@@ -42,8 +43,9 @@ class adas:
         #self.slam_socket = self.context.socket(zmq.REP)
         #self.slam_socket.bind("tcp://0.0.0.0:%s" % 5566)
 
-        #self.dl_socket = self.context.socket(zmq.REP)
-        #self.dl_socket.bind("tcp://0.0.0.0:%s" % 5567)
+        self.dl_socket = self.context.socket(zmq.REP)
+        self.dl_socket.setsockopt(zmq.RCVTIMEO, 2000)
+        self.dl_socket.bind("tcp://0.0.0.0:%s" % 5567)
 
     def check_stop(self):
         self.stop_socket.recv()
@@ -56,7 +58,7 @@ class adas:
     
     def update_data(self):
         while True:
-            with open('%s/config.json' %(Path.home())) as json_data_file:
+            with open('/../home/pi/config.json') as json_data_file:
                 self.data = json.load(json_data_file)
             time.sleep(1)
 
@@ -87,9 +89,26 @@ class adas:
             time.sleep(5)
             pass
     def check_dl(self):
-        while self.data['Car']['Deep_Learning']:
-            time.sleep(5)
-            pass
+        self.latest_dl = self.data['Car']['Deep_Learning']
+        while True:
+            if(self.latest_dl != self.data['Car']['Deep_Learning']):
+                if self.data['Car']['Deep_Learning'] == True: 
+                    print("Deep Learning is now Active!")
+                    self.latest_dl = self.data['Car']['Deep_Learning']
+                else:
+                    print("Deep Learning is now Inactive!")
+                self.latest_dl = self.data['Car']['Deep_Learning']
+            if self.data['Car']['Deep_Learning'] == False:
+                self.dl_message = None
+            while self.data['Car']['Deep_Learning']:
+                try:
+                    self.dl_message = self.dl_socket.recv()
+                    print("RECEIVING DEEP LEARNING MESSAGE")
+                except zmq.Again:
+                    print("TRYING TO RECEIVE DEEP LEARNING MESSAGE")
+                    continue
+                self.dl_socket.send(b'ok')
+                time.sleep(0.1)
     def check_lane_keeping(self):
         #while self.data['Car']['Lane_Keeping']:
         pass
@@ -107,7 +126,7 @@ class adas:
                     print("Deep Learning says: " + str(self.get_info(dl_message)))
                     self.car.send_message(dl_message)
                     self.dl_message = None
-                
+                    
                 elif self.lane_message is not None:
                     lane_message = msg.Message(self.lane_message)
                     print("Lane Keeping says: " + str(self.get_info(lane_message)))
@@ -122,12 +141,18 @@ class adas:
                 time.sleep(0.5)
 
     def get_info(self, message):
-
-                    if message.group == cb.CMD_SPEED:
-                        if message.command == cb.CAR_SPD:
-                            return "Change speed: " + str(struct.unpack(">h", message.data[:2])[0])
-                        elif message.command == cb.TURN_SPD:
-                            return "Turn: " + str(struct.unpack(">h", message.data[:2])[0])
+        if message.group == cb.CMD_SPEED:
+            if message.command == cb.CAR_SPD:
+                return "Change speed: " + str(struct.unpack(">h", message.data[:2])[0])
+            elif message.command == cb.TURN_SPD:
+                return "Turn: " + str(struct.unpack(">h", message.data[:2])[0])
+        elif message.group == cb.CMD_SET_PARAMS:
+            if message.command == cb.DISARM_MOTORS:
+                return "Disarm"
+            elif message.command == cb.ARM_MOTORS:
+                return "Arm"
+        else:
+            return None
     
 
 

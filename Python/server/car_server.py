@@ -30,7 +30,7 @@ def config_thread(socket):
 
         elif message == b'1':
             print("Sending config data to control panel")
-            with open('%s/config.json' %(Path.home())) as json_data_file:
+            with open('/../home/pi/config.json') as json_data_file:
                 data = json.load(json_data_file)
             socket.send_json(data, flags = 0, indent = True)
             message = 0
@@ -40,7 +40,7 @@ def config_thread(socket):
             print(message)
             data = message.decode()
             print(data)
-            with open('%s/config.json' %(Path.home()), 'w') as f:
+            with open('/../home/pi/config.json', 'w') as f:
                 f.write(data)
             socket.send(b'ok')
             message = 0

@@ -106,6 +106,7 @@ class CarController:
     def decode_lidar_chunk(self, chunk):
         """Map a chunk of lidar data into (quality, distance, angle)."""
         #print("decoding chunk: %s" % chunk)
+        print(chunk)
         return struct.unpack(">BHH", chunk)
 
     def lidar_chunks(self, data):

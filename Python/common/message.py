@@ -274,7 +274,7 @@ class LidarMessage(Message):
             yield self.data[i:i + lidar_chunk_size]
 
     def get_zmq_msg(self):
-        ret = bytes([cb.SENS, cb.SENS_LIDAR]) + self.data
+        ret = bytes([cb.SENS, cb.SENS_LIDAR, self.c2c, self.prio]) + self.data
         return ret
 
 class ImageMessage(Message):
